@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <iostream>
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -321,6 +322,11 @@ static LogicalResult doHLSFlowDynamic(
         suppressLaterPasses = true;
     });
   };
+
+
+  // Resolve blocks with multiple predescessors
+  pm.addPass(circt::createInsertMergeBlocksPass());
+
 
   // Software lowering
   addIRLevel(IRLevel::PreCompile, [&]() {
