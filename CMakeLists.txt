@@ -29,7 +29,11 @@ include_directories(
 )
 
 # Define the executable
-add_executable(hlscore src/HLSCore.cpp)
+add_executable(hlscore 
+    src/Options.cpp
+    src/HLSDynamic.cpp
+    src/HLSCore.cpp
+)
 
 # Update compile flags for LLVM
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
@@ -94,6 +98,6 @@ target_include_directories(hlscore PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${MLIR_INCLUDE_DIRS}
     ${CIRCT_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include
 )
 
