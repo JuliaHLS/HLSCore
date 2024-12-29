@@ -125,6 +125,7 @@ static LogicalResult
 processInput(MLIRContext &context, TimingScope &ts,
              std::unique_ptr<llvm::MemoryBuffer> input,
              std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
+
   if (!splitInputFile)
     return processInputSplit(context, ts, std::move(input), outputFile);
 
@@ -136,39 +137,34 @@ processInput(MLIRContext &context, TimingScope &ts,
       llvm::outs());
 }
 
-static LogicalResult executeHlstool(MLIRContext &context) {
+static LogicalResult executeHlstool(MLIRContext &context, const std::string& inputMLIR) {
+    // Create the timing manager we use to sample execution times.
+    DefaultTimingManager tm;
+    applyDefaultTimingManagerCLOptions(tm);
+    auto ts = tm.getRootScope();
 
-  // Create the timing manager we use to sample execution times.
-  DefaultTimingManager tm;
-  applyDefaultTimingManagerCLOptions(tm);
-  auto ts = tm.getRootScope();
+    // Parse the input into a memBuffer
+    auto input = llvm::MemoryBuffer::getMemBuffer(inputMLIR);
 
-  // Set up the input file.
-  std::string errorMessage;
-  auto input = openInputFile(inputFilename, &errorMessage);
-  if (!input) {
-    llvm::errs() << errorMessage << "\n";
-    return failure();
-  }
-
-  std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
-  if (outputFormat != OutputSplitVerilog) {
-    outputFile.emplace(openOutputFile(outputFilename, &errorMessage));
-    if (!*outputFile) {
-      llvm::errs() << errorMessage << "\n";
-      return failure();
+    std::string errorMessage;
+    std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
+    if (outputFormat != OutputSplitVerilog) {
+        outputFile.emplace(openOutputFile(outputFilename, &errorMessage));
+        if (!*outputFile) {
+          llvm::errs() << errorMessage << "\n";
+          return failure();
+        }
     }
-  }
 
-  // Process the input.
-  if (failed(processInput(context, ts, std::move(input), outputFile)))
-    return failure();
+    // Process the input.
+    if (failed(processInput(context, ts, std::move(input), outputFile)))
+        return failure();
 
-  // If the result succeeded and we're emitting a file, close it.
-  if (outputFile.has_value())
-    (*outputFile)->keep();
+    // If the result succeeded and we're emitting a file, close it.
+    if (outputFile.has_value())
+        (*outputFile)->keep();
 
-  return success();
+    return success();
 }
 
 /// Main driver for hlstool command.  This sets up LLVM and MLIR, and parses
@@ -176,11 +172,23 @@ static LogicalResult executeHlstool(MLIRContext &context) {
 /// up so we can `exit(0)` at the end of the program to avoid teardown of the
 /// MLIRContext and modules inside of it (reducing compile time).
 int main(int argc, char **argv) {
-  InitLLVM y(argc, argv);
-
-  // Set the bug report message to indicate users should file issues on
-  // llvm/circt and not llvm/llvm-project.
-  setBugReportMsg(circtBugReportMsg);
+    // Input MLIR string
+    std::string inputMLIR = R"mlir(func.func @t2(%arg0: i64, %arg1: i64) -> i64 {
+      %0 = arith.cmpi slt, %arg0, %arg1 : i64
+      cf.cond_br %0, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %1 = arith.addi %arg0, %arg1 : i64
+      cf.br ^bb4(%1 : i64)
+    ^bb2:  // pred: ^bb0
+      %2 = arith.cmpi slt, %arg1, %arg0 : i64
+      %c0_i64 = arith.constant 0 : i64
+      cf.cond_br %2, ^bb3, ^bb4(%c0_i64 : i64)
+    ^bb3:  // pred: ^bb2
+      %3 = arith.addi %arg0, %arg1 : i64
+      cf.br ^bb4(%3 : i64)
+    ^bb4(%4: i64):  // 3 preds: ^bb1, ^bb2, ^bb3
+      return %4 : i64
+    })mlir";
 
 
   // Register any pass manager command line options.
@@ -188,9 +196,6 @@ int main(int argc, char **argv) {
   registerPassManagerCLOptions();
   registerDefaultTimingManagerCLOptions();
   registerAsmPrinterCLOptions();
-
-  // Parse pass names in main to ensure static initialization completed.
-  cl::ParseCommandLineOptions(argc, argv, "CIRCT HLS tool\n");
 
   DialectRegistry registry;
   // Register MLIR dialects.
@@ -214,7 +219,7 @@ int main(int argc, char **argv) {
 
   // Do the guts of the hlstool process.
   MLIRContext context(registry);
-  auto result = executeHlstool(context);
+  auto result = executeHlstool(context, inputMLIR);
 
   // Use "exit" instead of return'ing to signal completion.  This avoids
   // invoking the MLIRContext destructor, which spends a bunch of time
