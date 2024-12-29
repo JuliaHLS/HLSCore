@@ -56,116 +56,9 @@
 #include "circt/Transforms/Passes.h"
 
 #include "IRLevel.hpp"
+#include "HLS.hpp"
 #include "HLSDynamic.hpp"
-
-
-using namespace llvm;
-using namespace mlir;
-using namespace circt;
-
-
-
-// --------------------------------------------------------------------------
-// Tool driver code
-// --------------------------------------------------------------------------
-/// Process a single buffer of the input.
-static LogicalResult processBuffer(
-    MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr,
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
-  // Parse the input.
-  mlir::OwningOpRef<mlir::ModuleOp> module;
-  llvm::sys::TimePoint<> parseStartTime;
-
-  auto parserTimer = ts.nest("MLIR Parser");
-  module = parseSourceFile<ModuleOp>(sourceMgr, &context);
-
-  if (!module)
-    return failure();
-
-  // Apply any pass manager command line options.
-  PassManager pm(&context);
-  pm.enableVerifier(verifyPasses);
-  pm.enableTiming(ts);
-  if (failed(applyPassManagerCLOptions(pm)))
-    return failure();
-
-    if (failed(doHLSFlowDynamic(pm, module.get(), outputFile)))
-      return failure();
-
-  // We intentionally "leak" the Module into the MLIRContext instead of
-  // deallocating it.  There is no need to deallocate it right before process
-  // exit.
-  (void)module.release();
-  return success();
-}
-
-/// Process a single split of the input. This allocates a source manager and
-/// creates a regular or verifying diagnostic handler, depending on whether
-/// the user set the verifyDiagnostics option.
-static LogicalResult processInputSplit(
-    MLIRContext &context, TimingScope &ts,
-    std::unique_ptr<llvm::MemoryBuffer> buffer,
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
-  llvm::SourceMgr sourceMgr;
-  sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
-  if (!verifyDiagnostics) {
-    SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
-    return processBuffer(context, ts, sourceMgr, outputFile);
-  }
-
-  SourceMgrDiagnosticVerifierHandler sourceMgrHandler(sourceMgr, &context);
-  context.printOpOnDiagnostic(false);
-  (void)processBuffer(context, ts, sourceMgr, outputFile);
-  return sourceMgrHandler.verify();
-}
-
-/// Process the entire input provided by the user, splitting it up if the
-/// corresponding option was specified.
-static LogicalResult
-processInput(MLIRContext &context, TimingScope &ts,
-             std::unique_ptr<llvm::MemoryBuffer> input,
-             std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
-
-  if (!splitInputFile)
-    return processInputSplit(context, ts, std::move(input), outputFile);
-
-  return splitAndProcessBuffer(
-      std::move(input),
-      [&](std::unique_ptr<MemoryBuffer> buffer, raw_ostream &) {
-        return processInputSplit(context, ts, std::move(buffer), outputFile);
-      },
-      llvm::outs());
-}
-
-static LogicalResult executeHlstool(MLIRContext &context, const std::string& inputMLIR) {
-    // Create the timing manager we use to sample execution times.
-    DefaultTimingManager tm;
-    applyDefaultTimingManagerCLOptions(tm);
-    auto ts = tm.getRootScope();
-
-    // Parse the input into a memBuffer
-    auto input = llvm::MemoryBuffer::getMemBuffer(inputMLIR);
-
-    std::string errorMessage;
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
-    if (outputFormat != OutputSplitVerilog) {
-        outputFile.emplace(openOutputFile(outputFilename, &errorMessage));
-        if (!*outputFile) {
-          llvm::errs() << errorMessage << "\n";
-          return failure();
-        }
-    }
-
-    // Process the input.
-    if (failed(processInput(context, ts, std::move(input), outputFile)))
-        return failure();
-
-    // If the result succeeded and we're emitting a file, close it.
-    if (outputFile.has_value())
-        (*outputFile)->keep();
-
-    return success();
-}
+#include "Options.hpp"
 
 /// Main driver for hlstool command.  This sets up LLVM and MLIR, and parses
 /// command line options before passing off to 'executeHlstool'.  This is set
@@ -189,40 +82,9 @@ int main(int argc, char **argv) {
     ^bb4(%4: i64):  // 3 preds: ^bb1, ^bb2, ^bb3
       return %4 : i64
     })mlir";
-
-
-  // Register any pass manager command line options.
-  registerMLIRContextCLOptions();
-  registerPassManagerCLOptions();
-  registerDefaultTimingManagerCLOptions();
-  registerAsmPrinterCLOptions();
-
-  DialectRegistry registry;
-  // Register MLIR dialects.
-  registry.insert<mlir::affine::AffineDialect>();
-  registry.insert<mlir::memref::MemRefDialect>();
-  registry.insert<mlir::func::FuncDialect>();
-  registry.insert<mlir::arith::ArithDialect>();
-  registry.insert<mlir::cf::ControlFlowDialect>();
-  registry.insert<mlir::scf::SCFDialect>();
-
-  // Register MLIR passes.
-  mlir::registerCSEPass();
-  mlir::registerSCCPPass();
-  mlir::registerInlinerPass();
-  mlir::registerCanonicalizerPass();
-
-  // Register CIRCT dialects.
-  registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-                  sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
-                  calyx::CalyxDialect>();
-
-  // Do the guts of the hlstool process.
-  MLIRContext context(registry);
-  auto result = executeHlstool(context, inputMLIR);
-
-  // Use "exit" instead of return'ing to signal completion.  This avoids
-  // invoking the MLIRContext destructor, which spends a bunch of time
-  // deallocating memory etc which process exit will do for us.
-  exit(failed(result));
+    
+    HLSTool hls;
+    std::unique_ptr<Options> opt = std::make_unique<Options>(inputMLIR, "-");
+    hls.setOptions(std::move(opt));
+    auto result = hls.synthesise();
 }

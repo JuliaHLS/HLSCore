@@ -71,7 +71,7 @@ void loadHWLoweringPipeline(OpPassManager &pm) {
 
 
 LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module,
+    PassManager &pm, ModuleOp module, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
   bool suppressLaterPasses = false;

@@ -12,6 +12,5 @@ OutputFormatKind outputFormat = OutputVerilog;
 bool traceIVerilog = false;
 bool withDC = false;
 bool verifyPasses = true;
-std::string inputFilename = "/home/ben/HLSCore/playground/example.mlir";
 std::string outputFilename = "-";
 bool verifyDiagnostics = false;

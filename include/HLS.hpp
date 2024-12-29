@@ -1,5 +1,9 @@
 #pragma once
 
+#include "Options.hpp"
+#include <memory>
+
+
 #include <iostream>
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
@@ -44,7 +48,8 @@
 #include "circt/Transforms/Passes.h"
 
 #include "IRLevel.hpp"
-#include "Options.hpp"
+#include "HLSDynamic.hpp"
+
 
 
 
@@ -52,8 +57,16 @@ using namespace llvm;
 using namespace mlir;
 using namespace circt;
 
-LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module, const std::string& outputFilename,
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
 
+class HLSTool {
+public:
+    HLSTool();
 
+    void setOptions(std::unique_ptr<Options>&& _opt);
+    LogicalResult synthesise();
+
+protected:
+    std::unique_ptr<Options> opt;
+
+    DialectRegistry registry;
+};

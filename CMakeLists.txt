@@ -32,6 +32,7 @@ include_directories(
 add_executable(hlscore 
     src/Options.cpp
     src/HLSDynamic.cpp
+    src/HLS.cpp
     src/HLSCore.cpp
 )
 
