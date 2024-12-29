@@ -63,10 +63,9 @@ public:
     HLSTool();
 
     void setOptions(std::unique_ptr<Options>&& _opt);
-    LogicalResult synthesise();
+    bool synthesise();
 
 protected:
     std::unique_ptr<Options> opt;
-
     DialectRegistry registry;
 };

@@ -36,10 +36,14 @@ add_executable(hlscore
     src/HLSCore.cpp
 )
 
+add_library(hlscore_c_api SHARED
+    src/HLS_C_API.cpp
+)
+
 # Update compile flags for LLVM
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
-target_link_libraries(hlscore
-    PRIVATE
+
+set(CIRCT_LIBS 
         ${llvm_libs}
         CIRCTDC
         CIRCTDCTransforms
@@ -83,15 +87,12 @@ target_link_libraries(hlscore
 # Link MLIR and CIRCT dependencies
 target_link_libraries(hlscore
     PRIVATE
-        MLIRIR
-        MLIRLLVMDialect
-        MLIRMemRefDialect
-        MLIROptLib
-        MLIRParser
-        MLIRControlFlowDialect
-        MLIRSupport
-        MLIRTransforms
-        MLIRSCFToControlFlow
+    ${CIRCT_LIBS}
+)
+
+target_link_libraries(hlscore_c_api
+    PRIVATE
+    ${CIRCT_LIBS}
 )
 
 # Include MLIR and LLVM headers
@@ -102,3 +103,9 @@ target_include_directories(hlscore PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+target_include_directories(hlscore_c_api PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+    ${MLIR_INCLUDE_DIRS}
+    ${CIRCT_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/include
+)

@@ -114,7 +114,7 @@ void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
     opt = std::move(_opt);
 }
 
-LogicalResult HLSTool::synthesise() {
+bool HLSTool::synthesise() {
 
     MLIRContext context(registry);
     // Create the timing manager we use to sample execution times.
@@ -132,17 +132,17 @@ LogicalResult HLSTool::synthesise() {
         outputFile.emplace(openOutputFile(opt->outputFilename, &errorMessage));
         if (!*outputFile) {
           llvm::errs() << errorMessage << "\n";
-          return failure();
+          return false;
         }
     }
 
     // Process the input.
     if (failed(processInput(context, ts, std::move(input), opt->outputFilename, outputFile)))
-        return failure();
+        return false;
 
     // If the result succeeded and we're emitting a file, close it.
     if (outputFile.has_value())
         (*outputFile)->keep();
 
-    return success();
+    return true; 
 }
