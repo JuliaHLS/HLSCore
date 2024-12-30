@@ -29,14 +29,14 @@ include_directories(
 )
 
 # Define the executable
-add_executable(hlscore 
+add_executable(HLSCore 
     src/Options.cpp
     src/HLSDynamic.cpp
     src/HLS.cpp
     src/HLSCore.cpp
 )
 
-add_library(hlscore_c_api SHARED
+add_library(HLSCore_C_API SHARED
     src/HLS_C_API.cpp
 )
 
@@ -85,27 +85,33 @@ set(CIRCT_LIBS
 )
 
 # Link MLIR and CIRCT dependencies
-target_link_libraries(hlscore
+target_link_libraries(HLSCore
     PRIVATE
     ${CIRCT_LIBS}
 )
 
-target_link_libraries(hlscore_c_api
+target_link_libraries(HLSCore_C_API
     PRIVATE
     ${CIRCT_LIBS}
 )
 
 # Include MLIR and LLVM headers
-target_include_directories(hlscore PRIVATE
+target_include_directories(HLSCore PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${MLIR_INCLUDE_DIRS}
     ${CIRCT_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
 )
 
-target_include_directories(hlscore_c_api PRIVATE
+target_include_directories(HLSCore_C_API PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${MLIR_INCLUDE_DIRS}
     ${CIRCT_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
+)
+
+install (TARGETS HLSCore_C_API HLSCore
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
 )
