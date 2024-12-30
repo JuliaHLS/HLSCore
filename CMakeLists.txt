@@ -37,6 +37,10 @@ add_executable(HLSCore
 )
 
 add_library(HLSCore_C_API SHARED
+    src/Options.cpp
+    src/HLSDynamic.cpp
+    src/HLS.cpp
+    src/HLSCore.cpp
     src/HLS_C_API.cpp
 )
 

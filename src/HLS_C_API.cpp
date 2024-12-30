@@ -3,27 +3,29 @@
 #include <memory>
 
 
-struct HLSTool_C {
-    std::unique_ptr<HLSCore::HLSTool> tool;
+extern "C" {
+struct HLSTool {
+   HLSCore::HLSTool* tool;
 };
 
-HLSTool_C* HLSTool_C_create() {
-    HLSTool_C* c_obj;
+HLSTool* HLSTool_create() {
+    HLSTool* c_obj = new HLSTool();
 
-    c_obj->tool = std::make_unique<HLSCore::HLSTool>();
+    c_obj->tool = new HLSCore::HLSTool();
 
     return c_obj;
 }
 
-void HLSTool_C_destroy(HLSTool_C* _tool) {
+void HLSTool_destroy(HLSTool* _tool) {
     delete _tool;
 }
 
-void HLSTool_C_setOptions(HLSTool_C* tool, char* inputMlir, char* outputFilename) {
+void HLSTool_setOptions(HLSTool* tool, char* inputMlir, char* outputFilename) {
     auto opt = std::make_unique<HLSCore::Options>(std::string(inputMlir), std::string(outputFilename));
     tool->tool->setOptions(std::move(opt));
 }
 
-bool HLSTool_C_synthesise(HLSTool_C* tool) {
+bool HLSTool_synthesise(HLSTool* tool) {
     return tool->tool->synthesise();
+}
 }

@@ -3,7 +3,7 @@
 
 extern "C" {
 
-typedef struct HLSTool HLSTool;
+struct HLSTool;
 
 HLSTool* HLSTool_create();
 void HLSTool_destroy(HLSTool* _tool);
