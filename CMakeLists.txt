@@ -110,6 +110,11 @@ target_include_directories(HLSCore_C_API PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+install (
+    FILES include/HLS_C_API.hpp
+    DESTINATION include
+)
+
 install (TARGETS HLSCore_C_API HLSCore
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib

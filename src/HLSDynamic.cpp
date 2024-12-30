@@ -1,5 +1,6 @@
 #include "HLSDynamic.hpp"
 
+namespace HLSCore {
 
 /// Create a simple canonicalizer pass.
 std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
@@ -157,4 +158,4 @@ LogicalResult doHLSFlowDynamic(
 }
 
 
-
+}

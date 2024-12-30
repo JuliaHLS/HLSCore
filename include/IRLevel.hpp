@@ -1,5 +1,6 @@
 #pragma once
 
+namespace HLSCore {
 
 enum IRLevel {
   // A high-level dialect like affine or scf
@@ -16,3 +17,4 @@ enum IRLevel {
   SV
 };
 
+}

@@ -4,6 +4,8 @@
 #include "Options.hpp"
 #include <string>
 
+namespace HLSCore {
+
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
 
@@ -30,3 +32,5 @@ extern bool traceIVerilog;
 extern bool withDC;
 extern bool verifyPasses;
 extern bool verifyDiagnostics;
+
+}

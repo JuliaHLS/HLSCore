@@ -52,8 +52,10 @@ using namespace llvm;
 using namespace mlir;
 using namespace circt;
 
+namespace HLSCore {
+
 LogicalResult doHLSFlowDynamic(
     PassManager &pm, ModuleOp module, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
 
-
+}

@@ -57,6 +57,7 @@ using namespace llvm;
 using namespace mlir;
 using namespace circt;
 
+namespace HLSCore {
 
 class HLSTool {
 public:
@@ -69,3 +70,5 @@ protected:
     std::unique_ptr<Options> opt;
     DialectRegistry registry;
 };
+
+}

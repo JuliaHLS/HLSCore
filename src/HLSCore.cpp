@@ -60,6 +60,8 @@
 #include "HLSDynamic.hpp"
 #include "Options.hpp"
 
+using namespace HLSCore;
+
 /// Main driver for hlstool command.  This sets up LLVM and MLIR, and parses
 /// command line options before passing off to 'executeHlstool'.  This is set
 /// up so we can `exit(0)` at the end of the program to avoid teardown of the

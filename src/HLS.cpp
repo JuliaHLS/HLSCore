@@ -1,6 +1,7 @@
 #include "HLS.hpp"
 #include <string>
 
+namespace HLSCore {
 
 // --------------------------------------------------------------------------
 // Tool driver code
@@ -145,4 +146,6 @@ bool HLSTool::synthesise() {
         (*outputFile)->keep();
 
     return true; 
+}
+
 }

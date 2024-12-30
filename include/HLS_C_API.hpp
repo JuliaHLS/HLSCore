@@ -1,16 +1,14 @@
 #pragma once
 
-#include "Options.hpp"
-
 
 extern "C" {
 
-typedef struct HLSTool_C HLCTool_C;
+typedef struct HLSTool HLSTool;
 
-HLSTool_C* HLSTool_C_create();
-void HLSTool_C_destroy(HLSTool_C* _tool);
+HLSTool* HLSTool_create();
+void HLSTool_destroy(HLSTool* _tool);
 
-void HLSTool_C_setOptions(HLSTool_C* tool, char* inputMlir, char* outputFilename);
-bool HLSTool_C_synthesise(HLSTool_C*);
+void HLSTool_setOptions(HLSTool* tool, char* inputMlir, char* outputFilename);
+bool HLSTool_synthesise(HLSTool*);
 
 }
