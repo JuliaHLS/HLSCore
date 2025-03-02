@@ -97,17 +97,21 @@ LogicalResult doHLSFlowDynamic(
     });
   };
 
-
   // Resolve blocks with multiple predescessors
-  pm.addPass(circt::createInsertMergeBlocksPass());
+  /* pm.addPass(circt::createInsertMergeBlocksPass()); */
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+    pm.addPass(mlir::bufferization::createOneShotBufferizePass());
+
+  /* mlir::tosa::addTosaToLinalgPasses(pm); */
 
 
   // Software lowering
   addIRLevel(PreCompile, [&]() {
-    pm.addPass(mlir::tosa::createTosaToLinalg());
+    /* pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg()); */
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createConvertSCFToCFPass());
   });
+
 
   addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
   addIRLevel(PostCompile,
@@ -135,6 +139,7 @@ LogicalResult doHLSFlowDynamic(
     pm.addPass(createSimpleCanonicalizerPass());
     loadESILoweringPipeline(pm);
   });
+
 
   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
 

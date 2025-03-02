@@ -89,10 +89,14 @@ set(CIRCT_LIBS
         MLIRParser
         MLIRControlFlowDialect
         MLIRTosaDialect
+        MLIRBufferizationDialect
+        MLIRTensorDialect
         MLIRSupport
         MLIRTransforms
         MLIRSCFToControlFlow
         MLIRTosaToLinalg
+        MLIRLinalgDialect
+        MLIRLinalgTransforms
 )
 
 # Link MLIR and CIRCT dependencies
