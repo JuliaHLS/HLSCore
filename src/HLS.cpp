@@ -109,6 +109,8 @@ HLSTool::HLSTool() {
   /* mlir::linalg::registerBufferizableOpInterfaceExternalModels(registry); */
 
   /* mlir::linalg::registerAllDialectInterfaceImplementations(registry); */
+  bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
+      registry);
 
 
   // Register MLIR passes.
