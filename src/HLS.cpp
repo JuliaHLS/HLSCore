@@ -111,8 +111,11 @@ HLSTool::HLSTool() {
   registry.insert<mlir::arith::ArithDialect>();
   registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<mlir::scf::SCFDialect>();
+  registry.insert<mlir::tosa::TosaDialect>();
+  /* registerAllDialects(registry); */
 
   // Register MLIR passes.
+  mlir::tosa::registerTosaToLinalgPipelines();
   mlir::registerCSEPass();
   mlir::registerSCCPPass();
   mlir::registerInlinerPass();

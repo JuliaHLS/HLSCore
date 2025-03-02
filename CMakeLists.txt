@@ -88,9 +88,11 @@ set(CIRCT_LIBS
         MLIROptLib
         MLIRParser
         MLIRControlFlowDialect
+        MLIRTosaDialect
         MLIRSupport
         MLIRTransforms
         MLIRSCFToControlFlow
+        MLIRTosaToLinalg
 )
 
 # Link MLIR and CIRCT dependencies
