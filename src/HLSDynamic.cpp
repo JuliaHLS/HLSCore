@@ -103,6 +103,7 @@ LogicalResult doHLSFlowDynamic(
 
   // Software lowering
   addIRLevel(PreCompile, [&]() {
+    pm.addPass(mlir::tosa::createTosaToLinalg());
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createConvertSCFToCFPass());
   });
