@@ -98,7 +98,18 @@ HLSTool::HLSTool() {
   registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<mlir::scf::SCFDialect>();
   registry.insert<mlir::tosa::TosaDialect>();
+  registry.insert<mlir::tensor::TensorDialect>();
+  registry.insert<mlir::linalg::LinalgDialect>();
+  registry.insert<mlir::bufferization::BufferizationDialect>();
+
   /* registerAllDialects(registry); */
+  mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::linalg::registerAllDialectInterfaceImplementations(registry);
+  /* mlir::linalg::registerBufferizableOpInterfaceExternalModels(registry); */
+  /* mlir::linalg::registerBufferizableOpInterfaceExternalModels(registry); */
+
+  /* mlir::linalg::registerAllDialectInterfaceImplementations(registry); */
+
 
   // Register MLIR passes.
   mlir::tosa::registerTosaToLinalgPipelines();
@@ -106,6 +117,7 @@ HLSTool::HLSTool() {
   mlir::registerSCCPPass();
   mlir::registerInlinerPass();
   mlir::registerCanonicalizerPass();
+  mlir::bufferization::registerOneShotBufferize();
 
   // Register CIRCT dialects.
   registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,

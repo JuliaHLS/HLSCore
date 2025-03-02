@@ -27,22 +27,10 @@ using namespace HLSCore;
 /// MLIRContext and modules inside of it (reducing compile time).
 int main(int argc, char **argv) {
     // Input MLIR string
-    std::string inputMLIR = R"mlir(func.func @t2(%arg0: i64, %arg1: i64) -> i64 {
-      %0 = arith.cmpi slt, %arg0, %arg1 : i64
-      cf.cond_br %0, ^bb1, ^bb2
-    ^bb1:  // pred: ^bb0
-      %1 = arith.addi %arg0, %arg1 : i64
-      cf.br ^bb4(%1 : i64)
-    ^bb2:  // pred: ^bb0
-      %2 = arith.cmpi slt, %arg1, %arg0 : i64
-      %c0_i64 = arith.constant 0 : i64
-      cf.cond_br %2, ^bb3, ^bb4(%c0_i64 : i64)
-    ^bb3:  // pred: ^bb2
-      %3 = arith.addi %arg0, %arg1 : i64
-      cf.br ^bb4(%3 : i64)
-    ^bb4(%4: i64):  // 3 preds: ^bb1, ^bb2, ^bb3
-      return %4 : i64
-    })mlir";
+    std::string inputMLIR = R"mlir(func.func @add(%arg0: tensor<5xi64>, %arg1: tensor<5xi64>) -> tensor<5xi64> {
+          %0 = "tosa.add"(%arg0, %arg1) : (tensor<5xi64>, tensor<5xi64>) -> tensor<5xi64>
+          return %0 : tensor<5xi64>
+        })mlir";
     
     HLSTool hls;
     std::unique_ptr<Options> opt = std::make_unique<Options>(inputMLIR, "-");

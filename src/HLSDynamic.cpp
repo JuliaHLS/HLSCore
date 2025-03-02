@@ -96,17 +96,21 @@ LogicalResult doHLSFlowDynamic(
     });
   };
 
-
   // Resolve blocks with multiple predescessors
-  pm.addPass(circt::createInsertMergeBlocksPass());
+  /* pm.addPass(circt::createInsertMergeBlocksPass()); */
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+    pm.addPass(mlir::bufferization::createOneShotBufferizePass());
+
+  /* mlir::tosa::addTosaToLinalgPasses(pm); */
 
 
   // Software lowering
   addIRLevel(PreCompile, [&]() {
-    pm.addPass(mlir::tosa::createTosaToLinalg());
+    /* pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg()); */
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createConvertSCFToCFPass());
   });
+
 
   addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
   addIRLevel(PostCompile,
@@ -135,13 +139,12 @@ LogicalResult doHLSFlowDynamic(
     loadESILoweringPipeline(pm);
   });
 
+
   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
 
   if (traceIVerilog)
     pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
-  /*if (loweringOptions.getNumOccurrences())*/
-  /*  loweringOptions.setAsAttribute(module);*/
   if (outputFormat == OutputVerilog) {
     pm.addPass(createExportVerilogPass((*outputFile)->os()));
   } else if (outputFormat == OutputSplitVerilog) {
@@ -151,6 +154,8 @@ LogicalResult doHLSFlowDynamic(
   // Go execute!
   if (failed(pm.run(module)))
     return failure();
+
+  std::cout << "Lowered the IR successfully" << std::endl;
 
   if (outputFormat == OutputIR)
     module->print((*outputFile)->os());
