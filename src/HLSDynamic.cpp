@@ -15,15 +15,17 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
+
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
+
   pm.addPass(mlir::createConvertSCFToCFPass());
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
   // DHLS conversion
   pm.addPass(circt::createCFToHandshakePass(
-      /*sourceConstants=*/false,
-      /*disableTaskPipelining=*/dynParallelism != Pipelining));
+      false,
+      dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
 
   if (dynParallelism == Locking) {
@@ -105,7 +107,6 @@ LogicalResult doHLSFlowDynamic(
     buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
     buff_opts.bufferizeFunctionBoundaries = true;
 
-    std::cout << "created buffer opts" << std::endl;
     pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts));
 
   /* mlir::tosa::addTosaToLinalgPasses(pm); */
@@ -113,50 +114,50 @@ LogicalResult doHLSFlowDynamic(
 
   // Software lowering
   addIRLevel(PreCompile, [&]() {
-    /* pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg()); */
+    pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createConvertSCFToCFPass());
   });
 
 
-/*   addIRLevel(Core, [&]() { loadDHLSPipeline(pm); }); */
-/*   addIRLevel(PostCompile, */
-/*              [&]() { loadHandshakeTransformsPipeline(pm); }); */
+  addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
+  addIRLevel(PostCompile,
+             [&]() { loadHandshakeTransformsPipeline(pm); });
 
-/*   // HW path. */
+  // HW path.
 
-/*   addIRLevel(RTL, [&]() { */
-/*     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass()); */
-/*     if (withDC) { */
-/*       pm.addPass(circt::createHandshakeToDC({"clock", "reset"})); */
-/*       // This pass sometimes resolves an error in the */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.nest<hw::HWModuleOp>().addPass( */
-/*           circt::dc::createDCMaterializeForksSinksPass()); */
-/*       // TODO: We assert without a canonicalizer pass here. Debug. */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.addPass(circt::createDCToHWPass()); */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.addPass(circt::createMapArithToCombPass()); */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*     } else { */
-/*       pm.addPass(circt::createHandshakeToHWPass()); */
-/*     } */
-/*     pm.addPass(createSimpleCanonicalizerPass()); */
-/*     loadESILoweringPipeline(pm); */
-/*   }); */
+  addIRLevel(RTL, [&]() {
+    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+    if (withDC) {
+      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
+      // This pass sometimes resolves an error in the
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.nest<hw::HWModuleOp>().addPass(
+          circt::dc::createDCMaterializeForksSinksPass());
+      // TODO: We assert without a canonicalizer pass here. Debug.
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createDCToHWPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createMapArithToCombPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+    } else {
+      pm.addPass(circt::createHandshakeToHWPass());
+    }
+    pm.addPass(createSimpleCanonicalizerPass());
+    loadESILoweringPipeline(pm);
+  });
 
 
-/*   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); }); */
+  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
 
-/*   if (traceIVerilog) */
-/*     pm.addPass(circt::sv::createSVTraceIVerilogPass()); */
+  if (traceIVerilog)
+    pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
-/*   if (outputFormat == OutputVerilog) { */
-/*     pm.addPass(createExportVerilogPass((*outputFile)->os())); */
-/*   } else if (outputFormat == OutputSplitVerilog) { */
-/*     pm.addPass(createExportSplitVerilogPass(outputFilename)); */
-/*   } */
+  if (outputFormat == OutputVerilog) {
+    pm.addPass(createExportVerilogPass((*outputFile)->os()));
+  } else if (outputFormat == OutputSplitVerilog) {
+    pm.addPass(createExportSplitVerilogPass(outputFilename));
+  }
 
   // Go execute!
   if (failed(pm.run(module)))
