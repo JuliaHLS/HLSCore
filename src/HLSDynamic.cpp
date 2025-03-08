@@ -15,7 +15,6 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
-
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
   pm.addPass(mlir::createSCFToControlFlowPass());
