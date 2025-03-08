@@ -15,7 +15,6 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
-
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
   pm.addPass(mlir::createSCFToControlFlowPass());
@@ -26,6 +25,13 @@ void loadDHLSPipeline(OpPassManager &pm) {
       false,
       dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
+  /* pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass()); */
+  /* pm.addPass(circt::createFlattenMemRefPass()); */
+  /* pm.nest<func::FuncOp>().addPass( */
+      /* circt::handshake::createHandshakeLegalizeMemrefsPass()); */
+
+
+  pm.addNestedPass<circt::handshake::FuncOp>(circt::handshake::createHandshakeRemoveBuffersPass());
 
   if (dynParallelism == Locking) {
     pm.nest<handshake::FuncOp>().addPass(
