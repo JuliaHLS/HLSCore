@@ -39,6 +39,7 @@ add_executable(HLSCore
     src/HLSDynamic.cpp
     src/HLS.cpp
     src/HLSCore.cpp
+    src/OutputMemrefPassByRef.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -47,6 +48,7 @@ add_library(HLSCore_C_API SHARED
     src/HLS.cpp
     src/HLSCore.cpp
     src/HLS_C_API.cpp
+    src/OutputMemrefPassByRef.cpp
 )
 
 # Update compile flags for LLVM
