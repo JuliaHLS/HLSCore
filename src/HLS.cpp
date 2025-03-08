@@ -112,6 +112,8 @@ HLSTool::HLSTool() {
   bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
       registry);
 
+  mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
+  /* mlir::cf::registerBufferizableOpInterfaceExternalModels(registry); */
 
   // Register MLIR passes.
   mlir::tosa::registerTosaToLinalgPipelines();

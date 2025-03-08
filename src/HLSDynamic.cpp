@@ -15,7 +15,6 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
-
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
 
@@ -27,6 +26,13 @@ void loadDHLSPipeline(OpPassManager &pm) {
       false,
       dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
+  /* pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass()); */
+  /* pm.addPass(circt::createFlattenMemRefPass()); */
+  /* pm.nest<func::FuncOp>().addPass( */
+      /* circt::handshake::createHandshakeLegalizeMemrefsPass()); */
+
+
+  pm.addNestedPass<circt::handshake::FuncOp>(circt::handshake::createHandshakeRemoveBuffersPass());
 
   if (dynParallelism == Locking) {
     pm.nest<handshake::FuncOp>().addPass(
@@ -101,14 +107,15 @@ LogicalResult doHLSFlowDynamic(
   // Resolve blocks with multiple predescessors
   /* pm.addPass(circt::createInsertMergeBlocksPass()); */
 
-    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+    /* pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg()); */
 
-    auto buff_opts = mlir::bufferization::OneShotBufferizationOptions();
-    buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-    buff_opts.bufferizeFunctionBoundaries = true;
+    /* auto buff_opts = mlir::bufferization::OneShotBufferizationOptions(); */
+    /* buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap); */
+    /* buff_opts.bufferizeFunctionBoundaries = true; */
 
-    pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts));
+    /* pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts)); */
 
+    /* pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass()); */
   /* mlir::tosa::addTosaToLinalgPasses(pm); */
 
 
@@ -126,6 +133,8 @@ LogicalResult doHLSFlowDynamic(
 
   // HW path.
 
+
+pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMemrefsPass());
   addIRLevel(RTL, [&]() {
     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
     if (withDC) {
@@ -153,6 +162,7 @@ LogicalResult doHLSFlowDynamic(
   if (traceIVerilog)
     pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
+
   if (outputFormat == OutputVerilog) {
     pm.addPass(createExportVerilogPass((*outputFile)->os()));
   } else if (outputFormat == OutputSplitVerilog) {
@@ -166,7 +176,7 @@ LogicalResult doHLSFlowDynamic(
   std::cout << "Lowered the IR successfully" << std::endl;
 
   /* if (outputFormat == OutputIR) */
-   module->print((*outputFile)->os());
+   /* module->print((*outputFile)->os()); */
 
   return success();
 }
