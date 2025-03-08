@@ -44,6 +44,7 @@ add_library(HLSCore_C_API SHARED
     src/HLSCore.cpp
     src/WriteSingleFileOutput.cpp
     src/HLS_C_API.cpp
+    src/OutputMemrefPassByRef.cpp
 )
 
 # Update compile flags for LLVM
