@@ -108,15 +108,15 @@ LogicalResult doHLSFlowDynamic(
   // Resolve blocks with multiple predescessors
   /* pm.addPass(circt::createInsertMergeBlocksPass()); */
 
-    /* pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg()); */
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
 
-    /* auto buff_opts = mlir::bufferization::OneShotBufferizationOptions(); */
-    /* buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap); */
-    /* buff_opts.bufferizeFunctionBoundaries = true; */
+    auto buff_opts = mlir::bufferization::OneShotBufferizationOptions();
+    buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
+    buff_opts.bufferizeFunctionBoundaries = true;
 
-    /* pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts)); */
+    pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts));
 
-    /* pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass()); */
+    pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
   /* mlir::tosa::addTosaToLinalgPasses(pm); */
 
 
@@ -128,37 +128,41 @@ LogicalResult doHLSFlowDynamic(
   });
 
 
-  addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
-  addIRLevel(PostCompile,
-             [&]() { loadHandshakeTransformsPipeline(pm); });
+    pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
 
-  // HW path.
+   /* module->print((*outputFile)->os()); */
 
+/*   addIRLevel(Core, [&]() { loadDHLSPipeline(pm); }); */
+/*   addIRLevel(PostCompile, */
+/*              [&]() { loadHandshakeTransformsPipeline(pm); }); */
 
-pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMemrefsPass());
-  addIRLevel(RTL, [&]() {
-    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
-    if (withDC) {
-      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
-      // This pass sometimes resolves an error in the
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.nest<hw::HWModuleOp>().addPass(
-          circt::dc::createDCMaterializeForksSinksPass());
-      // TODO: We assert without a canonicalizer pass here. Debug.
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.addPass(circt::createDCToHWPass());
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.addPass(circt::createMapArithToCombPass());
-      pm.addPass(createSimpleCanonicalizerPass());
-    } else {
-      pm.addPass(circt::createHandshakeToHWPass());
-    }
-    pm.addPass(createSimpleCanonicalizerPass());
-    loadESILoweringPipeline(pm);
-  });
+/*   // HW path. */
 
 
-  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
+/*  pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMemrefsPass()); */
+/*   addIRLevel(RTL, [&]() { */
+/*     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass()); */
+/*     if (withDC) { */
+/*       pm.addPass(circt::createHandshakeToDC({"clock", "reset"})); */
+/*       // This pass sometimes resolves an error in the */
+/*       pm.addPass(createSimpleCanonicalizerPass()); */
+/*       pm.nest<hw::HWModuleOp>().addPass( */
+/*           circt::dc::createDCMaterializeForksSinksPass()); */
+/*       // TODO: We assert without a canonicalizer pass here. Debug. */
+/*       pm.addPass(createSimpleCanonicalizerPass()); */
+/*       pm.addPass(circt::createDCToHWPass()); */
+/*       pm.addPass(createSimpleCanonicalizerPass()); */
+/*       pm.addPass(circt::createMapArithToCombPass()); */
+/*       pm.addPass(createSimpleCanonicalizerPass()); */
+/*     } else { */
+/*       pm.addPass(circt::createHandshakeToHWPass()); */
+/*     } */
+/*     pm.addPass(createSimpleCanonicalizerPass()); */
+/*     loadESILoweringPipeline(pm); */
+/*   }); */
+
+
+/*   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); }); */
 
   if(targetAbstractionLayer(RTL)) {
       if (traceIVerilog)
@@ -172,10 +176,14 @@ pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMe
         pm.addPass(createExportSplitVerilogPass(outputFilename));
       }
   }
-  
+
   // Go execute!
-  if (failed(pm.run(module)))
+  if (failed(pm.run(module))){
+   module->print((*outputFile)->os());
+  std::cout << "failed :(" << std::endl;
+    module.dump();
     return failure();
+ }
 
   module->print((*outputFile)->os());
 
