@@ -1,31 +1,19 @@
 #include "OutputMemrefPassByRef.h"
 
 void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
-    llvm::outs() << "Has memref: " << returnIsMemRef() << "\n";
-
-    mlir::func::FuncOp func = getOperation();
+    func = getOperation();
+    funcType = func.getFunctionType();
     mlir::Block &entryBlock = func.front();
-
-    llvm::outs() << "Function " << func.getName() << " has " << entryBlock.getNumArguments() << " entry block arguments:\n";
-
-    // Iterate over arguments and print them
-    for (mlir::BlockArgument arg : entryBlock.getArguments()) {
-        llvm::outs() << "- SSA Value: " << arg << ", Type: " << arg.getType() << "\n";
-    }
 
     // modify the function if it is returning a memref
     if (returnIsMemRef()) {
-        // rewriter information
-        
+        // instantiate rewriter and OpBuilder
         mlir::IRRewriter rewriter(&getContext());
-        bool rewrittenSignature = false;
-
         mlir::OpBuilder builder(func.getContext());
 
+        // function information
         mlir::func::ReturnOp returnOp;
-        mlir::Value oldSSAValue;
 
-        
         // extract return operation
         func.walk([&](mlir::func::ReturnOp op) {
             returnOp = op;
@@ -33,7 +21,7 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
 
 
         // extract old ssa value
-        oldSSAValue = returnOp.getOperand(0);
+        auto oldSSAValue = returnOp.getOperand(0);
         auto memrefType = mlir::dyn_cast<mlir::MemRefType>(oldSSAValue.getType());
         auto functionType = func.getFunctionType();
 
@@ -67,19 +55,13 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
 
     // check if return type is MemRef
 [[nodiscard]] bool HLSPasses::OutputMemrefPassByRef::returnIsMemRef() {
-    // get underlying function
-    mlir::func::FuncOp f = getOperation();
-
-    // extract type information
-    mlir::FunctionType fType = f.getFunctionType();
-
     // store num results
-    const auto numResults = fType.getNumResults();
+    const auto numResults = funcType.getNumResults();
 
     // check if function returns simple array type
     if (numResults == 1) {
         // extract result type
-        const mlir::Type retType = fType.getResult(0);
+        const mlir::Type retType = funcType.getResult(0);
 
         // compare and return result type
         return retType.isa<mlir::MemRefType>();
@@ -89,7 +71,7 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
         
         for(uint i = 0; i < numResults; i++) {
             // extract current result
-            const mlir::Type retType = fType.getResult(i);
+            const mlir::Type retType = funcType.getResult(i);
 
             // print warning if MemRefType warning
             if (retType.isa<mlir::MemRefType>()) {

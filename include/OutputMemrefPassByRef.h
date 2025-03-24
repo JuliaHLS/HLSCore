@@ -26,9 +26,10 @@ private:
 
   // function state helpers 
   [[nodiscard]] bool returnIsMemRef();
-  [[nodiscard]] bool isOpStoreOperation();
 
-  // rewrite helpers
+  // pass state
+  mlir::func::FuncOp func;
+  mlir::FunctionType funcType;
 
 };
 
