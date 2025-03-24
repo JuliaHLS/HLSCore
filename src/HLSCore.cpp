@@ -27,10 +27,10 @@ using namespace HLSCore;
 /// MLIRContext and modules inside of it (reducing compile time).
 int main(int argc, char **argv) {
     // Input MLIR string
-    /* std::string inputMLIR = R"mlir(func.func @add(%arg0: tensor<5xi64>, %arg1: tensor<5xi64>) -> tensor<5xi64> { */
-    /*       %0 = "tosa.add"(%arg0, %arg1) : (tensor<5xi64>, tensor<5xi64>) -> tensor<5xi64> */
-    /*       return %0 : tensor<5xi64> */
-    /*     })mlir"; */
+    std::string inputMLIR = R"mlir(func.func @add(%arg0: tensor<5xi64>, %arg1: tensor<5xi64>) -> tensor<5xi64> {
+          %0 = "tosa.add"(%arg0, %arg1) : (tensor<5xi64>, tensor<5xi64>) -> tensor<5xi64>
+          return %0 : tensor<5xi64>
+        })mlir";
     /* std::string inputMLIR = R"mlir( */
     /* #map = affine_map<(d0) -> (d0)> */
     /* module { */
@@ -45,28 +45,28 @@ int main(int argc, char **argv) {
     /*   } */
     /* })mlir"; */
 
-    std::string inputMLIR = R"mlir(
-    module {
-      func.func @add(%arg0: memref<5xi64>, %arg1: memref<5xi64>, %out: memref<5xi64>) -> i1 {
-        %c0 = arith.constant 0 : index
-        %c5 = arith.constant 5 : index
-        %c1 = arith.constant 1 : index
-        cf.br ^bb1(%c0 : index)
-      ^bb1(%0: index):  // 2 preds: ^bb0, ^bb2
-        %1 = arith.cmpi slt, %0, %c5 : index
-        cf.cond_br %1, ^bb2, ^bb3
-      ^bb2:  // pred: ^bb1
-        %2 = memref.load %arg0[%0] : memref<5xi64>
-        %3 = memref.load %arg1[%0] : memref<5xi64>
-        %4 = arith.addi %2, %3 : i64
-        memref.store %4, %out[%0] : memref<5xi64>
-        %5 = arith.addi %0, %c1 : index
-        cf.br ^bb1(%5 : index)
-      ^bb3:  // pred: ^bb1
-        %true = arith.constant true
-        return %true : i1
-      }
-    })mlir";
+    /* std::string inputMLIR = R"mlir( */
+    /* module { */
+    /*   func.func @add(%arg0: memref<5xi64>, %arg1: memref<5xi64>, %out: memref<5xi64>) -> i1 { */
+    /*     %c0 = arith.constant 0 : index */
+    /*     %c5 = arith.constant 5 : index */
+    /*     %c1 = arith.constant 1 : index */
+    /*     cf.br ^bb1(%c0 : index) */
+    /*   ^bb1(%0: index):  // 2 preds: ^bb0, ^bb2 */
+    /*     %1 = arith.cmpi slt, %0, %c5 : index */
+    /*     cf.cond_br %1, ^bb2, ^bb3 */
+    /*   ^bb2:  // pred: ^bb1 */
+    /*     %2 = memref.load %arg0[%0] : memref<5xi64> */
+    /*     %3 = memref.load %arg1[%0] : memref<5xi64> */
+    /*     %4 = arith.addi %2, %3 : i64 */
+    /*     memref.store %4, %out[%0] : memref<5xi64> */
+    /*     %5 = arith.addi %0, %c1 : index */
+    /*     cf.br ^bb1(%5 : index) */
+    /*   ^bb3:  // pred: ^bb1 */
+    /*     %true = arith.constant true */
+    /*     return %true : i1 */
+    /*   } */
+    /* })mlir"; */
     /* std::string inputMLIR = R"mlir(func.func @add(%arg0: i64, %arg1: i64) -> i64 { */
     /*     %0 = arith.addi %arg0, %arg1 : i64 */
     /*     return %0 : i64 */
