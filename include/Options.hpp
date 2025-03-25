@@ -20,7 +20,6 @@ public:
 
     Options()
     {
-        throw std::runtime_error("Baseclass 'Options' should not be called directly when configuring the HLS tool, please use OptionsString or OptionsFile");
     }
 
 protected:

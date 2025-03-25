@@ -1,5 +1,6 @@
 #include "HLS.hpp"
 #include <string>
+#include "logging.hpp"
 
 namespace HLSCore {
 
@@ -116,6 +117,7 @@ void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
 }
 
 bool HLSTool::synthesise() {
+    HLSCore::logging::runtime_log("Starting Synthesis");
 
     MLIRContext context(registry);
     // Create the timing manager we use to sample execution times.
@@ -124,13 +126,18 @@ bool HLSTool::synthesise() {
     auto ts = tm.getRootScope();
 
 
+    HLSCore::logging::runtime_log("Parsing Input");
     // Parse the input into a memBuffer
     auto input = opt->getInputBuffer();
 
+    // write to output file
     std::string errorMessage;
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
+
     if (outputFormat != OutputSplitVerilog) {
         outputFile.emplace(openOutputFile(opt->getOutputFilename(), &errorMessage));
+        HLSCore::logging::runtime_log("Writing to output file: " + opt->getOutputFilename());
+
         if (!*outputFile) {
           llvm::errs() << errorMessage << "\n";
           return false;
@@ -138,12 +145,15 @@ bool HLSTool::synthesise() {
     }
 
     // Process the input.
+    HLSCore::logging::runtime_log("Processing input MLIR");
     if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
         return false;
 
     // If the result succeeded and we're emitting a file, close it.
     if (outputFile.has_value())
         (*outputFile)->keep();
+
+    HLSCore::logging::runtime_log("Emitted Output");
 
     return true; 
 }

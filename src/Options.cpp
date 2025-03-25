@@ -18,3 +18,7 @@ std::string outputFilename = "-";
 bool verifyDiagnostics = false;
 
 }
+
+namespace HLSCore::logging {
+    bool runtime_logging_flag = false;
+}

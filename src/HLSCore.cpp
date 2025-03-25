@@ -8,12 +8,15 @@
 #include "HLS.hpp"
 #include "HLSDynamic.hpp"
 #include "Options.hpp"
+#include "logging.hpp"
 
 #include <iostream>
+#include <string>
 #include "llvm/Support/CommandLine.h"
 
 using namespace HLSCore;
 using namespace llvm;
+
 
 // Command Line Options
 static cl::opt<IRLevel> inputLevelOpt(
@@ -52,13 +55,30 @@ static cl::opt<std::string> inputFilename(
     cl::init("input.mlir")
 );
 
+static cl::opt<bool> runtime_logging_flag (
+    "runtime_log",
+    cl::desc("Toggle Runtime Logging"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
 
 // driver program
 int hls_driver(std::string& filename) {
+    logging::runtime_log<std::string>("Starting HLS Tool");
+
     HLSTool hls;
+
+    logging::runtime_log<std::string>("Instantiated HLS Tool");
+
     std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(filename, "-");
     hls.setOptions(std::move(opt));
+    
+    logging::runtime_log<std::string>("Set up HLS Tool, starting synthesis");
+
     auto result = hls.synthesise();
+
+    logging::runtime_log<std::string>("Successfully Synthesised Program");
 
     return 1;
 }
@@ -66,7 +86,9 @@ int hls_driver(std::string& filename) {
 
 int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
+    logging::runtime_logging_flag = runtime_logging_flag;
     irOutputLevel = outputLevelOpt;
+
 
     // start driver program
     return hls_driver(inputFilename);
