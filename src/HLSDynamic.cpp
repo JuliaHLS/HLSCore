@@ -83,12 +83,13 @@ LogicalResult doHLSFlowDynamic(
       passAdder();
   };
 
-  auto addIRLevel = [&](int level, llvm::function_ref<void()> passAdder) {
+  auto addIRLevel = [&](IRLevel level, llvm::function_ref<void()> passAdder) {
     addIfNeeded(notSuppressed, [&]() {
       // Add the pass if the input IR level is at least the current
       // abstraction.
-      if (irInputLevel <= level)
+      if (targetAbstractionLayer(level))
         passAdder();
+
       // Suppresses later passes if we're emitting IR and the output IR level is
       // the current level.
       if (outputFormat == OutputIR && irOutputLevel == level)
@@ -136,23 +137,24 @@ LogicalResult doHLSFlowDynamic(
 
   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
 
-  if (traceIVerilog)
-    pm.addPass(circt::sv::createSVTraceIVerilogPass());
+  if(targetAbstractionLayer(RTL)) {
+      if (traceIVerilog)
+        pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
-  /*if (loweringOptions.getNumOccurrences())*/
-  /*  loweringOptions.setAsAttribute(module);*/
-  if (outputFormat == OutputVerilog) {
-    pm.addPass(createExportVerilogPass((*outputFile)->os()));
-  } else if (outputFormat == OutputSplitVerilog) {
-    pm.addPass(createExportSplitVerilogPass(outputFilename));
+      /*if (loweringOptions.getNumOccurrences())*/
+      /*  loweringOptions.setAsAttribute(module);*/
+      if (outputFormat == OutputVerilog) {
+        pm.addPass(createExportVerilogPass((*outputFile)->os()));
+      } else if (outputFormat == OutputSplitVerilog) {
+        pm.addPass(createExportSplitVerilogPass(outputFilename));
+      }
   }
 
   // Go execute!
   if (failed(pm.run(module)))
     return failure();
 
-  if (outputFormat == OutputIR)
-    module->print((*outputFile)->os());
+  module->print((*outputFile)->os());
 
   return success();
 }

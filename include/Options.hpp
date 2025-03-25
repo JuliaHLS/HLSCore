@@ -62,6 +62,10 @@ public:
     }   
 };
 
+
+// determine if the current level is within the target range
+[[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel);
+
 extern DynamicParallelismKind dynParallelism;
 extern bool withESI;
 extern std::string bufferingStrategy;
