@@ -10,28 +10,55 @@
 #include "Options.hpp"
 
 #include <iostream>
-#include <boost/program_options.hpp>
+#include "llvm/Support/CommandLine.h"
 
 using namespace HLSCore;
+using namespace llvm;
 
-/// Main driver for hlstool command.  This sets up LLVM and MLIR, and parses
-/// command line options before passing off to 'executeHlstool'.  This is set
-/// up so we can `exit(0)` at the end of the program to avoid teardown of the
-/// MLIRContext and modules inside of it (reducing compile time).
+// Command Line Options
+static cl::opt<IRLevel> inputLevelOpt(
+    "inType",
+    cl::desc("Choose Input Type:"),
+    cl::values(
+        clEnumValN(IRLevel::High, "High", "High Level Input"),
+        clEnumValN(IRLevel::PreCompile, "PreCompile", "PreCompile level as Input"),
+        clEnumValN(IRLevel::Core, "Core", "Core level as Input"),
+        clEnumValN(IRLevel::PostCompile, "PostCompile", "PostCompile level as Input"),
+        clEnumValN(IRLevel::RTL, "RTL", "RTL level Input"),
+        clEnumValN(IRLevel::SV, "SV", "SV level Input")
+    ),
+    cl::init(IRLevel::SV)
+);
+
+
+static cl::opt<IRLevel> outputLevelOpt(
+    "outType",
+    cl::desc("Choose Output Type:"),
+    cl::values(
+        clEnumValN(IRLevel::High, "High", "High Level Output"),
+        clEnumValN(IRLevel::PreCompile, "PreCompile", "PreCompile level as Output"),
+        clEnumValN(IRLevel::Core, "Core", "Core level as Output"),
+        clEnumValN(IRLevel::PostCompile, "PostCompile", "PostCompile level as Output"),
+        clEnumValN(IRLevel::RTL, "RTL", "RTL level Output"),
+        clEnumValN(IRLevel::SV, "SV", "SV level Output")
+    ),
+    cl::init(IRLevel::SV)
+);
+
+
+// driver program
+int hls_driver(std::string& filename) {
+    HLSTool hls;
+    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(filename, "-");
+    hls.setOptions(std::move(opt));
+    auto result = hls.synthesise();
+
+    return 1;
+}
+
 int main(int argc, char **argv) {
-    boost::program_options::options_description desc("Options"); 
-    desc.add_options()
-        ("help,h", "Help")
-    ;
-
-    boost::program_options::variables_map vm;
-    store(boost::program_options::parse_command_line(argc, argv, desc), vm);
-
-    if (vm.count("help")) {  
-        std::cout << desc << "\n";
-        return 0;
-    }
-
+    cl::ParseCommandLineOptions(argc, argv, "HLSCore");
+    irOutputLevel = outputLevelOpt;
 
     /* // Input MLIR string */
     /* std::string inputMLIR = R"mlir(func.func @t2(%arg0: i64, %arg1: i64) -> i64 { */
@@ -51,8 +78,4 @@ int main(int argc, char **argv) {
     /*   return %4 : i64 */
     /* })mlir"; */
     
-    /* HLSTool hls; */
-    /* std::unique_ptr<Options> opt = std::make_unique<Options>(inputMLIR, "-"); */
-    /* hls.setOptions(std::move(opt)); */
-    /* auto result = hls.synthesise(); */
 }

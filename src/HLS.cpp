@@ -125,12 +125,12 @@ bool HLSTool::synthesise() {
 
 
     // Parse the input into a memBuffer
-    auto input = llvm::MemoryBuffer::getMemBuffer(opt->inputMlir);
+    auto input = opt->getInputBuffer();
 
     std::string errorMessage;
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
     if (outputFormat != OutputSplitVerilog) {
-        outputFile.emplace(openOutputFile(opt->outputFilename, &errorMessage));
+        outputFile.emplace(openOutputFile(opt->getOutputFilename(), &errorMessage));
         if (!*outputFile) {
           llvm::errs() << errorMessage << "\n";
           return false;
@@ -138,7 +138,7 @@ bool HLSTool::synthesise() {
     }
 
     // Process the input.
-    if (failed(processInput(context, ts, std::move(input), opt->outputFilename, outputFile)))
+    if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
         return false;
 
     // If the result succeeded and we're emitting a file, close it.

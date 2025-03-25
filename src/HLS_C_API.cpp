@@ -21,7 +21,7 @@ void HLSTool_destroy(HLSTool* _tool) {
 }
 
 void HLSTool_setOptions(HLSTool* tool, char* inputMlir, char* outputFilename) {
-    auto opt = std::make_unique<HLSCore::Options>(std::string(inputMlir), std::string(outputFilename));
+    auto opt = std::make_unique<HLSCore::OptionsString>(std::string(inputMlir), std::string(outputFilename));
     tool->tool->setOptions(std::move(opt));
 }
 

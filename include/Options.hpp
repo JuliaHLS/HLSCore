@@ -2,6 +2,9 @@
 
 #include "IRLevel.hpp"
 #include "Options.hpp"
+#include "llvm/Support/MemoryBufferRef.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/raw_ostream.h"
 #include <string>
 
 namespace HLSCore {
@@ -9,14 +12,57 @@ namespace HLSCore {
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
 
-struct Options {
-    const std::string inputMlir;
-    const std::string outputFilename;
+class Options {
+public:
+    // extract buffer ref (regardless of input type
+    [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const = 0;
+    [[nodiscard]] const std::string getOutputFilename() const { return outputFilename; }
 
-    Options(const std::string& _inputMlir, const std::string& _outputFilename) :
-        inputMlir (_inputMlir),
-        outputFilename (_outputFilename)
-    {}
+    Options()
+    {
+        throw std::runtime_error("Base Options should not be called directly, please use OptionsString or OptionsFile");
+    }
+
+protected:
+    std::string outputFilename;
+};
+
+class OptionsString : public Options {
+public:
+    const std::string inputMlir;
+
+    [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const override { return llvm::MemoryBuffer::getMemBuffer(inputMlir); }
+
+    OptionsString(const std::string& _inputMlir, const std::string& _outputFilename) :
+        inputMlir (_inputMlir)
+    {
+        outputFilename = _outputFilename;
+    }
+};
+
+class OptionsFile : public Options {
+public:
+    const std::string inputFilename;
+
+    [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const override {
+        // try to extract memory buffer
+        auto bufferOrErr = llvm::MemoryBuffer::getFile(inputFilename);
+
+        // check if error was received when opening the file
+        if (std::error_code ec = bufferOrErr.getError()) {
+            llvm::errs() << "Failed to open file: " << inputFilename << "\n";
+            throw std::runtime_error("Invalid HLS Tool Options, file missing");
+        }
+
+        // return buffer unique pointer (rval is implicit on return)
+        return std::unique_ptr<llvm::MemoryBuffer>(bufferOrErr->get());
+    }
+
+    OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename) :
+        inputFilename (_inputFilename)
+    {
+        outputFilename = _outputFilename;
+    }   
 };
 
 extern DynamicParallelismKind dynParallelism;
