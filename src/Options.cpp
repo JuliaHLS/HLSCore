@@ -17,6 +17,10 @@ bool verifyPasses = true;
 std::string outputFilename = "-";
 bool verifyDiagnostics = false;
 
+[[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel) {
+    return currentLevel <= irOutputLevel && currentLevel >= irInputLevel; 
+}
+
 }
 
 namespace HLSCore::logging {
