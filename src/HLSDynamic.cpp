@@ -117,6 +117,7 @@ LogicalResult doHLSFlowDynamic(
 
     pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
   /* mlir::tosa::addTosaToLinalgPasses(pm); */
+    pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
 
 
   // Software lowering
@@ -127,7 +128,6 @@ LogicalResult doHLSFlowDynamic(
   });
 
 
-    pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
 
    /* module->print((*outputFile)->os()); */
 
