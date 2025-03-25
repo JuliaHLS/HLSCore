@@ -6,6 +6,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
+#include "mlir/Support/FileUtilities.h"
 
 namespace HLSCore {
 
@@ -45,16 +46,13 @@ public:
 
     [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const override {
         // try to extract memory buffer
-        auto bufferOrErr = llvm::MemoryBuffer::getFile(inputFilename);
+        auto buffer = mlir::openInputFile(inputFilename);
 
         // check if error was received when opening the file
-        if (std::error_code ec = bufferOrErr.getError()) {
-            llvm::errs() << "Failed to open file: " << inputFilename << "\n";
-            throw std::runtime_error("Invalid HLS Tool Options, file missing");
-        }
-
+        if (!buffer) throw std::runtime_error("[HLSCore ERROR]: MLIR input file returned nullptr \n");
+        
         // return buffer unique pointer (rval is implicit on return)
-        return std::unique_ptr<llvm::MemoryBuffer>(bufferOrErr->get());
+        return buffer;
     }
 
     OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename) :

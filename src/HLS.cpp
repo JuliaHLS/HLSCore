@@ -1,4 +1,5 @@
 #include "HLS.hpp"
+#include <llvm/ADT/StringRef.h>
 #include <string>
 #include "logging.hpp"
 
@@ -11,31 +12,32 @@ namespace HLSCore {
 static LogicalResult processBuffer(
     MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
-  // Parse the input.
-  mlir::OwningOpRef<mlir::ModuleOp> module;
-  llvm::sys::TimePoint<> parseStartTime;
 
-  auto parserTimer = ts.nest("MLIR Parser");
-  module = parseSourceFile<ModuleOp>(sourceMgr, &context);
+    // Parse the input
+    mlir::OwningOpRef<mlir::ModuleOp> module;
+    llvm::sys::TimePoint<> parseStartTime;
 
-  if (!module)
+    auto parserTimer = ts.nest("MLIR Parser");
+    module = parseSourceFile<ModuleOp>(sourceMgr, &context);
+
+    if (!module)
     return failure();
 
-  // Apply any pass manager command line options.
-  PassManager pm(&context);
-  pm.enableVerifier(verifyPasses);
-  pm.enableTiming(ts);
-  if (failed(applyPassManagerCLOptions(pm)))
+    // Apply any pass manager command line options.
+    PassManager pm(&context);
+    pm.enableVerifier(verifyPasses);
+    pm.enableTiming(ts);
+    if (failed(applyPassManagerCLOptions(pm)))
     return failure();
 
     if (failed(doHLSFlowDynamic(pm, module.get(), outputFilename, outputFile)))
       return failure();
 
-  // We intentionally "leak" the Module into the MLIRContext instead of
-  // deallocating it.  There is no need to deallocate it right before process
-  // exit.
-  (void)module.release();
-  return success();
+    // We intentionally "leak" the Module into the MLIRContext instead of
+    // deallocating it.  There is no need to deallocate it right before process
+    // exit.
+    (void)module.release();
+    return success();
 }
 
 /// Process a single split of the input. This allocates a source manager and
@@ -45,17 +47,24 @@ static LogicalResult processInputSplit(
     MLIRContext &context, TimingScope &ts,
     std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
-  llvm::SourceMgr sourceMgr;
-  sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
-  if (!verifyDiagnostics) {
-    SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
-    return processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
-  }
 
-  SourceMgrDiagnosticVerifierHandler sourceMgrHandler(sourceMgr, &context);
-  context.printOpOnDiagnostic(false);
-  (void)processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
-  return sourceMgrHandler.verify();
+    if (!buffer) HLSCore::logging::runtime_log<std::string>("Error: Buffer empty");
+
+    llvm::SourceMgr sourceMgr;
+    sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
+
+    if (!verifyDiagnostics) {
+        SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
+        return processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
+    }
+
+    SourceMgrDiagnosticVerifierHandler sourceMgrHandler(sourceMgr, &context);
+    context.printOpOnDiagnostic(false);
+
+    HLSCore::logging::runtime_log<std::string>("Processing buffer");
+    (void)processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
+    HLSCore::logging::runtime_log<std::string>("Processed buffer");
+    return sourceMgrHandler.verify();
 }
 
 /// Process the entire input provided by the user, splitting it up if the
@@ -65,10 +74,14 @@ processInput(MLIRContext &context, TimingScope &ts,
              std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename,
              std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-  if (!splitInputFile)
-    return processInputSplit(context, ts, std::move(input), outputFilename, outputFile);
+    if (!splitInputFile) {
+        HLSCore::logging::runtime_log("Processing InputSplit");
+        return processInputSplit(context, ts, std::move(input), outputFilename, outputFile);
+    }
 
-  return splitAndProcessBuffer(
+
+    HLSCore::logging::runtime_log("Processing splitAndProcessBuffer");
+    return splitAndProcessBuffer(
       std::move(input),
       [&](std::unique_ptr<MemoryBuffer> buffer, raw_ostream &) {
         return processInputSplit(context, ts, std::move(buffer), outputFilename, outputFile);
@@ -129,6 +142,9 @@ bool HLSTool::synthesise() {
     HLSCore::logging::runtime_log("Parsing Input");
     // Parse the input into a memBuffer
     auto input = opt->getInputBuffer();
+
+    HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
+    HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
 
     // write to output file
     std::string errorMessage;
