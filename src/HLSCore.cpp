@@ -66,7 +66,6 @@ static cl::opt<bool> runtime_logging_flag (
 // driver program
 int hls_driver(std::string& filename) {
     logging::runtime_log<std::string>("Starting HLS Tool");
-
     HLSTool hls;
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
