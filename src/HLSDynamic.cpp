@@ -129,40 +129,37 @@ LogicalResult doHLSFlowDynamic(
   });
 
 
+  addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
+  addIRLevel(PostCompile,
+             [&]() { loadHandshakeTransformsPipeline(pm); });
 
-   /* module->print((*outputFile)->os()); */
-
-/*   addIRLevel(Core, [&]() { loadDHLSPipeline(pm); }); */
-/*   addIRLevel(PostCompile, */
-/*              [&]() { loadHandshakeTransformsPipeline(pm); }); */
-
-/*   // HW path. */
+  // HW path.
 
 
-/*  pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMemrefsPass()); */
-/*   addIRLevel(RTL, [&]() { */
-/*     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass()); */
-/*     if (withDC) { */
-/*       pm.addPass(circt::createHandshakeToDC({"clock", "reset"})); */
-/*       // This pass sometimes resolves an error in the */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.nest<hw::HWModuleOp>().addPass( */
-/*           circt::dc::createDCMaterializeForksSinksPass()); */
-/*       // TODO: We assert without a canonicalizer pass here. Debug. */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.addPass(circt::createDCToHWPass()); */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*       pm.addPass(circt::createMapArithToCombPass()); */
-/*       pm.addPass(createSimpleCanonicalizerPass()); */
-/*     } else { */
-/*       pm.addPass(circt::createHandshakeToHWPass()); */
-/*     } */
-/*     pm.addPass(createSimpleCanonicalizerPass()); */
-/*     loadESILoweringPipeline(pm); */
-/*   }); */
+ pm.addNestedPass<mlir::func::FuncOp>(circt::handshake::createHandshakeLegalizeMemrefsPass());
+  addIRLevel(RTL, [&]() {
+    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+    if (withDC) {
+      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
+      // This pass sometimes resolves an error in the
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.nest<hw::HWModuleOp>().addPass(
+          circt::dc::createDCMaterializeForksSinksPass());
+      // TODO: We assert without a canonicalizer pass here. Debug.
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createDCToHWPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createMapArithToCombPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+    } else {
+      pm.addPass(circt::createHandshakeToHWPass());
+    }
+    pm.addPass(createSimpleCanonicalizerPass());
+    loadESILoweringPipeline(pm);
+  });
 
 
-/*   addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); }); */
+  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
 
   if(targetAbstractionLayer(RTL)) {
       if (traceIVerilog)
