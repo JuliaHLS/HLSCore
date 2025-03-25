@@ -21,7 +21,7 @@ message(STATUS "Found CIRCT")
 set(LLVM_LINK_COMPONENTS Support)
 
 # Find Boost
-find_package(Boost REQUIRED CONFIG)
+find_package(Boost REQUIRED COMPONENTS program_options)
 message(STATUS "Found Boost")
 
 # Include directories
@@ -97,6 +97,7 @@ set(CIRCT_LIBS
 target_link_libraries(HLSCore
     PRIVATE
     ${CIRCT_LIBS}
+    ${Boost_LIBRARIES}
 )
 
 target_link_libraries(HLSCore_C_API
