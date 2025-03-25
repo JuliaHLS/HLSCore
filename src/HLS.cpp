@@ -119,15 +119,11 @@ HLSTool::HLSTool() {
   /* registerAllDialects(registry); */
   mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
   mlir::linalg::registerAllDialectInterfaceImplementations(registry);
-  /* mlir::linalg::registerBufferizableOpInterfaceExternalModels(registry); */
-  /* mlir::linalg::registerBufferizableOpInterfaceExternalModels(registry); */
 
-  /* mlir::linalg::registerAllDialectInterfaceImplementations(registry); */
   bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
       registry);
 
   mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
-  /* mlir::cf::registerBufferizableOpInterfaceExternalModels(registry); */
 
   // Register MLIR passes.
   mlir::tosa::registerTosaToLinalgPipelines();
