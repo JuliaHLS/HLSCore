@@ -146,28 +146,31 @@ bool HLSTool::synthesise() {
     HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
     HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
 
-    // write to output file
+    // process the input
     std::string errorMessage;
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
+    
+    // create output file, if not already handled by CIRCT 
+    if(outputFormat != OutputSplitVerilog) {
+        outputFile.emplace(mlir::openOutputFile(opt->getOutputFilename(), &errorMessage));
 
-    if (outputFormat != OutputSplitVerilog) {
-        outputFile.emplace(openOutputFile(opt->getOutputFilename(), &errorMessage));
-        HLSCore::logging::runtime_log("Writing to output file: " + opt->getOutputFilename());
-
-        if (!*outputFile) {
-          llvm::errs() << errorMessage << "\n";
-          return false;
+        // error handling
+        if(!*outputFile) {
+            llvm::errs() << "[HLSCore ERROR] :" << errorMessage << "\n";
+            return false;
         }
     }
 
-    // Process the input.
+    // create outputFile
+
     HLSCore::logging::runtime_log("Processing input MLIR");
     if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
         return false;
 
-    // If the result succeeded and we're emitting a file, close it.
+    // close output file (clean-up)
     if (outputFile.has_value())
         (*outputFile)->keep();
+
 
     HLSCore::logging::runtime_log("Emitted Output");
 

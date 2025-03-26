@@ -75,69 +75,80 @@ LogicalResult doHLSFlowDynamic(
     PassManager &pm, ModuleOp module, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-  bool suppressLaterPasses = false;
-  auto notSuppressed = [&]() { return !suppressLaterPasses; };
-  auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
+    bool suppressLaterPasses = false;
+    auto notSuppressed = [&]() { return !suppressLaterPasses; };
+    auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
                          llvm::function_ref<void()> passAdder) {
     if (predicate())
       passAdder();
-  };
+    };
 
-  auto addIRLevel = [&](IRLevel level, llvm::function_ref<void()> passAdder) {
-    addIfNeeded(notSuppressed, [&]() {
-      // Add the pass if the input IR level is at least the current
-      // abstraction.
-      if (targetAbstractionLayer(level))
-        passAdder();
-
-      // Suppresses later passes if we're emitting IR and the output IR level is
-      // the current level.
-      if (outputFormat == OutputIR && irOutputLevel == level)
-        suppressLaterPasses = true;
-    });
-  };
-
-
-  // Resolve blocks with multiple predescessors
-  pm.addPass(circt::createInsertMergeBlocksPass());
+    auto addIRLevel = [&](int level, llvm::function_ref<void()> passAdder) {
+        addIfNeeded(notSuppressed, [&]() {
+        // Add the pass if the input IR level is at least the current
+        // abstraction.
+        if (irInputLevel <= level)
+            passAdder();
+        // Suppresses later passes if we're emitting IR and the output IR level is
+        // the current level.
+        if (outputFormat == OutputIR && irOutputLevel == level)
+            suppressLaterPasses = true;
+        });
+    };
 
 
-  // Software lowering
-  addIRLevel(PreCompile, [&]() {
+    // Resolve blocks with multiple predescessors
+    pm.addPass(circt::createInsertMergeBlocksPass());
+
+
+    // Software lowering
+    addIRLevel(PreCompile, [&]() {
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createConvertSCFToCFPass());
-  });
+    });
 
-  addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
-  addIRLevel(PostCompile,
+    addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
+    addIRLevel(PostCompile,
              [&]() { loadHandshakeTransformsPipeline(pm); });
 
-  // HW path.
+    // HW path.
 
-  addIRLevel(RTL, [&]() {
-    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
-    if (withDC) {
-      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
-      // This pass sometimes resolves an error in the
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.nest<hw::HWModuleOp>().addPass(
-          circt::dc::createDCMaterializeForksSinksPass());
-      // TODO: We assert without a canonicalizer pass here. Debug.
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.addPass(circt::createDCToHWPass());
-      pm.addPass(createSimpleCanonicalizerPass());
-      pm.addPass(circt::createMapArithToCombPass());
-      pm.addPass(createSimpleCanonicalizerPass());
-    } else {
-      pm.addPass(circt::createHandshakeToHWPass());
-    }
-    pm.addPass(createSimpleCanonicalizerPass());
-    loadESILoweringPipeline(pm);
-  });
+    addIRLevel(RTL, [&]() {
+        pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+        if (withDC) {
+            pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
+            // This pass sometimes resolves an error in the
+            pm.addPass(createSimpleCanonicalizerPass());
+            pm.nest<hw::HWModuleOp>().addPass(
+              circt::dc::createDCMaterializeForksSinksPass());
+            // TODO: We assert without a canonicalizer pass here. Debug.
+            pm.addPass(createSimpleCanonicalizerPass());
+            pm.addPass(circt::createDCToHWPass());
+            pm.addPass(createSimpleCanonicalizerPass());
+            pm.addPass(circt::createMapArithToCombPass());
+            pm.addPass(createSimpleCanonicalizerPass());
+        } else {
+            pm.addPass(circt::createHandshakeToHWPass());
+        }
+        pm.addPass(createSimpleCanonicalizerPass());
+        loadESILoweringPipeline(pm);
+    });
 
-  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
+    addIRLevel(SV, [&]() { 
+        loadHWLoweringPipeline(pm); 
 
-  if(targetAbstractionLayer(RTL)) {
+        // handle output
+        if (traceIVerilog)
+        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+
+        if (outputFormat == OutputVerilog) {
+            pm.addPass(createExportVerilogPass((*outputFile)->os()));
+        } else if (outputFormat == OutputSplitVerilog) {
+            pm.addPass(createExportSplitVerilogPass(outputFilename));
+        }
+    });
+
+    if(targetAbstractionLayer(RTL)) {
       if (traceIVerilog)
         pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
@@ -148,15 +159,16 @@ LogicalResult doHLSFlowDynamic(
       } else if (outputFormat == OutputSplitVerilog) {
         pm.addPass(createExportSplitVerilogPass(outputFilename));
       }
-  }
+    }
 
-  // Go execute!
-  if (failed(pm.run(module)))
+
+    /*if (loweringOptions.getNumOccurrences())*/
+    /*  loweringOptions.setAsAttribute(module);*/
+    // Go execute!
+    if (failed(pm.run(module)))
     return failure();
 
-  module->print((*outputFile)->os());
-
-  return success();
+    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
 }
 
 

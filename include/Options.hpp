@@ -2,7 +2,6 @@
 
 #include "IRLevel.hpp"
 #include "Options.hpp"
-#include "llvm/Support/MemoryBufferRef.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
@@ -36,7 +35,9 @@ public:
     OptionsString(const std::string& _inputMlir, const std::string& _outputFilename) :
         inputMlir (_inputMlir)
     {
-        outputFilename = _outputFilename;
+        // write to console if name not entered
+        if (_outputFilename.size() == 0) outputFilename = "-";
+        else outputFilename = _outputFilename;
     }
 };
 
@@ -58,7 +59,9 @@ public:
     OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename) :
         inputFilename (_inputFilename)
     {
-        outputFilename = _outputFilename;
+        // write to console if name not entered
+        if (_outputFilename.size() == 0) outputFilename = "-";
+        else outputFilename = _outputFilename;
     }   
 };
 

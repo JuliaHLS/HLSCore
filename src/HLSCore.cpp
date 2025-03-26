@@ -11,6 +11,7 @@
 #include "logging.hpp"
 
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include "llvm/Support/CommandLine.h"
 
@@ -55,6 +56,13 @@ static cl::opt<std::string> inputFilename(
     cl::init("input.mlir")
 );
 
+static cl::opt<std::string> outputFilename(
+    "output",
+    cl::desc("Select Output Filename"),
+    cl::value_desc("Default filename: {EMPTY}"),
+    cl::init("")
+);
+
 static cl::opt<bool> runtime_logging_flag (
     "runtime_log",
     cl::desc("Toggle Runtime Logging"),
@@ -62,16 +70,24 @@ static cl::opt<bool> runtime_logging_flag (
     cl::init(false)
 );
 
+static cl::opt<bool> split_verilog_flag(
+    "split_verilog",
+    cl::desc("Toggle whether or not outputted Verilog will split into source files"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
+
 
 // driver program
-int hls_driver(std::string& filename) {
+int hls_driver(const std::string& inputFilename, const std::string outputFilename) {
     logging::runtime_log<std::string>("Starting HLS Tool");
 
     HLSTool hls;
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
 
-    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(filename, "-");
+    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
     hls.setOptions(std::move(opt));
     
     logging::runtime_log<std::string>("Set up HLS Tool, starting synthesis");
@@ -89,8 +105,14 @@ int main(int argc, char **argv) {
     logging::runtime_logging_flag = runtime_logging_flag;
     irOutputLevel = outputLevelOpt;
 
+    outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;
+    
+
+    if (split_verilog_flag && irOutputLevel != SV)
+        throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
+
 
     // start driver program
-    return hls_driver(inputFilename);
+    return hls_driver(inputFilename, outputFilename);
    
 }
