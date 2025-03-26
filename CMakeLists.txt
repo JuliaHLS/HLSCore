@@ -35,6 +35,7 @@ add_executable(HLSCore
     src/HLS.cpp
     src/HLSCore.cpp
     src/WriteSingleFileOutput.cpp
+    src/OutputMemrefPassByRef.cpp
 )
 
 add_library(HLSCore_C_API SHARED
