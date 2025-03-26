@@ -146,8 +146,20 @@ bool HLSTool::synthesise() {
     HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
     HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
 
-    // Process the input.
+    // process the input
+    std::string errorMessage;
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
+    
+    // create output file, if not already handled by CIRCT 
+    if(outputFormat != OutputSplitVerilog) {
+        outputFile.emplace(mlir::openOutputFile(opt->getOutputFilename(), &errorMessage));
+
+        // error handling
+        if(!*outputFile) {
+            llvm::errs() << "[HLSCore ERROR] :" << errorMessage << "\n";
+            return false;
+        }
+    }
 
     // create outputFile
 
