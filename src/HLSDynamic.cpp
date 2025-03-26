@@ -135,7 +135,19 @@ LogicalResult doHLSFlowDynamic(
     loadESILoweringPipeline(pm);
   });
 
-  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
+    addIRLevel(SV, [&]() { 
+        loadHWLoweringPipeline(pm); 
+
+        // handle output
+        if (traceIVerilog)
+        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+
+        /* if (outputFormat == OutputVerilog) { */
+        /*     pm.addPass(createExportVerilogPass((*outputFile)->os())); */
+        /* } else if (outputFormat == OutputSplitVerilog) { */
+        /*     pm.addPass(createExportSplitVerilogPass(outputFilename)); */
+        /* } */
+    });
 
   if(targetAbstractionLayer(RTL)) {
       if (traceIVerilog)

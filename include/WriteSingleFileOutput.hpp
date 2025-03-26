@@ -2,38 +2,16 @@
 
 #include "llvm/Support/LogicalResult.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "Options.hpp"
 #include "mlir/IR/BuiltinOps.h"
+#include "logging.hpp"
 
 #include <memory>
 #include <string>
 
 
-[[nodiscard]] llvm::LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename) {
-    std::unique_ptr<llvm::ToolOutputFile> outputFile;
-    std::string errorMessage;
+namespace HLSCore::output {
 
-    // write to an output file if specified
-    if (outputFilename.size() == 0) {
-        // if output files are not split
-        if (outputFormat != OutputSplitVerilog) {
-            // write to output
-            outputFile.emplace(openOutputFile(outputFilename, &errorMessage));
+[[nodiscard]] llvm::LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
 
-            // error handling
-            if(!*outputFile) {
-                llvm::errs() << "[HLSCore ERROR] :" << errorMessage << "\n";
-                return llvm::LogicalResult::failure();
-            }
-        }
-    }
-
-    // print the output
-    module->print((*outputFile)->os());
-
-    // close output file (clean-up)
-    if (outputFile.has_value())
-        (*outputFile)->keep();
-
-    // return success
-    return llvm::LogicalResult::success();
 }
