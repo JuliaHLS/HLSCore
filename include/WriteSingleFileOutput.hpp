@@ -27,7 +27,13 @@
         }
     }
 
+    // print the output
     module->print((*outputFile)->os());
-    
+
+    // close output file (clean-up)
+    if (outputFile.has_value())
+        (*outputFile)->keep();
+
+    // return success
     return llvm::LogicalResult::success();
 }
