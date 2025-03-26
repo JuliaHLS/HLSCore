@@ -2,7 +2,6 @@
 
 #include "IRLevel.hpp"
 #include "Options.hpp"
-#include "llvm/Support/MemoryBufferRef.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
@@ -37,7 +36,7 @@ public:
         inputMlir (_inputMlir)
     {
         // write to console if name not entered
-        if (_outputFilename == "") outputFilename = "-";
+        if (_outputFilename.size() == 0) outputFilename = "-";
         else outputFilename = _outputFilename;
     }
 };
@@ -61,7 +60,7 @@ public:
         inputFilename (_inputFilename)
     {
         // write to console if name not entered
-        if (_outputFilename == "") outputFilename = "-";
+        if (_outputFilename.size() == 0) outputFilename = "-";
         else outputFilename = _outputFilename;
     }   
 };

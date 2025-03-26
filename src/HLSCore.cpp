@@ -11,6 +11,7 @@
 #include "logging.hpp"
 
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include "llvm/Support/CommandLine.h"
 
@@ -62,13 +63,20 @@ static cl::opt<std::string> outputFilename(
     cl::init("")
 );
 
-
 static cl::opt<bool> runtime_logging_flag (
     "runtime_log",
     cl::desc("Toggle Runtime Logging"),
     cl::value_desc("Default: false"),
     cl::init(false)
 );
+
+static cl::opt<bool> split_verilog_flag(
+    "split_verilog",
+    cl::desc("Toggle whether or not outputted Verilog will split into source files"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
 
 
 // driver program
@@ -96,6 +104,12 @@ int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
     irOutputLevel = outputLevelOpt;
+
+    outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;
+    
+
+    if (split_verilog_flag && irOutputLevel != SV)
+        throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
 
 
     // start driver program
