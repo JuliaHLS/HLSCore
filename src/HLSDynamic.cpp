@@ -155,9 +155,7 @@ LogicalResult doHLSFlowDynamic(
     if (failed(pm.run(module)))
     return failure();
 
-    HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
-
-    return success();
+    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
 }
 
 
