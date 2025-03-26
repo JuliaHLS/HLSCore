@@ -1,4 +1,5 @@
 #include "HLSDynamic.hpp"
+#include <mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h>
 
 namespace HLSCore {
 
@@ -76,6 +77,13 @@ void loadHWLoweringPipeline(OpPassManager &pm) {
   modulePM.addPass(sv::createPrettifyVerilogPass());
 }
 
+[[nodiscard]] mlir::bufferization::OneShotBufferizationOptions generateBufferConfig() {
+    auto buff_opts = mlir::bufferization::OneShotBufferizationOptions();
+    buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
+    buff_opts.bufferizeFunctionBoundaries = true;
+
+    return buff_opts;
+}
 
 
 LogicalResult doHLSFlowDynamic(
@@ -100,25 +108,27 @@ LogicalResult doHLSFlowDynamic(
 
     // Resolve blocks with multiple predescessors
     /* pm.addPass(circt::createInsertMergeBlocksPass()); */
-    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
 
-    auto buff_opts = mlir::bufferization::OneShotBufferizationOptions();
-    buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-    buff_opts.bufferizeFunctionBoundaries = true;
-
-    pm.addPass(mlir::bufferization::createOneShotBufferizePass(buff_opts));
-
-    pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
-    /* mlir::tosa::addTosaToLinalgPasses(pm); */
-    pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
-
-    HLSCore::logging::runtime_log<std::string>("Ran Pre-lowering passes");
+    HLSCore::logging::runtime_log<std::string>("Building passes");
 
     // Software lowering
     addIRLevel(PreCompile, [&]() {
+        // lower tosa to Linalg
+        pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+
+        // generate buffers
+        pm.addPass(mlir::bufferization::createOneShotBufferizePass(generateBufferConfig()));
+        pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
+
+        // legalise return types
+        pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
+
+        // lower linalg to cf
         pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
+
+        // log
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Precompile");
     });
 
