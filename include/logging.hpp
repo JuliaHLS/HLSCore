@@ -11,7 +11,7 @@ extern bool runtime_logging_flag;
 template<typename a> 
 void runtime_log(a&& msg) {
     if (runtime_logging_flag) {
-        outs() << "[HLSCore LOG]: " << msg << "\n";
+        llvm::outs() << "[HLSCore LOG]: " << msg << "\n";
     }
 }
 

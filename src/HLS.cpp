@@ -146,28 +146,19 @@ bool HLSTool::synthesise() {
     HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
     HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
 
-    // write to output file
-    std::string errorMessage;
+    // Process the input.
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
 
-    if (outputFormat != OutputSplitVerilog) {
-        outputFile.emplace(openOutputFile(opt->getOutputFilename(), &errorMessage));
-        HLSCore::logging::runtime_log("Writing to output file: " + opt->getOutputFilename());
+    // create outputFile
 
-        if (!*outputFile) {
-          llvm::errs() << errorMessage << "\n";
-          return false;
-        }
-    }
-
-    // Process the input.
     HLSCore::logging::runtime_log("Processing input MLIR");
     if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
         return false;
 
-    // If the result succeeded and we're emitting a file, close it.
+    // close output file (clean-up)
     if (outputFile.has_value())
         (*outputFile)->keep();
+
 
     HLSCore::logging::runtime_log("Emitted Output");
 

@@ -134,25 +134,28 @@ LogicalResult doHLSFlowDynamic(
     loadESILoweringPipeline(pm);
   });
 
-  addIRLevel(SV, [&]() { loadHWLoweringPipeline(pm); });
+    addIRLevel(SV, [&]() { 
+        loadHWLoweringPipeline(pm); 
 
-  if (traceIVerilog)
-    pm.addPass(circt::sv::createSVTraceIVerilogPass());
+        // handle output
+        if (traceIVerilog)
+        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+
+        /* if (outputFormat == OutputVerilog) { */
+        /*     pm.addPass(createExportVerilogPass((*outputFile)->os())); */
+        /* } else if (outputFormat == OutputSplitVerilog) { */
+        /*     pm.addPass(createExportSplitVerilogPass(outputFilename)); */
+        /* } */
+    });
+
 
   /*if (loweringOptions.getNumOccurrences())*/
   /*  loweringOptions.setAsAttribute(module);*/
-  if (outputFormat == OutputVerilog) {
-    pm.addPass(createExportVerilogPass((*outputFile)->os()));
-  } else if (outputFormat == OutputSplitVerilog) {
-    pm.addPass(createExportSplitVerilogPass(outputFilename));
-  }
-
-  // Go execute!
+    // Go execute!
   if (failed(pm.run(module)))
     return failure();
 
-  if (outputFormat == OutputIR)
-    module->print((*outputFile)->os());
+  HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
 
   return success();
 }
