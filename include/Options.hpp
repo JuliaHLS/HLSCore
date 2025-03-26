@@ -36,7 +36,9 @@ public:
     OptionsString(const std::string& _inputMlir, const std::string& _outputFilename) :
         inputMlir (_inputMlir)
     {
-        outputFilename = _outputFilename;
+        // write to console if name not entered
+        if (_outputFilename == "") outputFilename = "-";
+        else outputFilename = _outputFilename;
     }
 };
 
@@ -58,7 +60,9 @@ public:
     OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename) :
         inputFilename (_inputFilename)
     {
-        outputFilename = _outputFilename;
+        // write to console if name not entered
+        if (_outputFilename == "") outputFilename = "-";
+        else outputFilename = _outputFilename;
     }   
 };
 

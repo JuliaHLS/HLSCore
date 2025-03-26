@@ -55,6 +55,14 @@ static cl::opt<std::string> inputFilename(
     cl::init("input.mlir")
 );
 
+static cl::opt<std::string> outputFilename(
+    "output",
+    cl::desc("Select Output Filename"),
+    cl::value_desc("Default filename: {EMPTY}"),
+    cl::init("")
+);
+
+
 static cl::opt<bool> runtime_logging_flag (
     "runtime_log",
     cl::desc("Toggle Runtime Logging"),
@@ -64,14 +72,14 @@ static cl::opt<bool> runtime_logging_flag (
 
 
 // driver program
-int hls_driver(std::string& filename) {
+int hls_driver(const std::string& inputFilename, const std::string outputFilename) {
     logging::runtime_log<std::string>("Starting HLS Tool");
 
     HLSTool hls;
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
 
-    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(filename, "-");
+    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
     hls.setOptions(std::move(opt));
     
     logging::runtime_log<std::string>("Set up HLS Tool, starting synthesis");
@@ -91,6 +99,6 @@ int main(int argc, char **argv) {
 
 
     // start driver program
-    return hls_driver(inputFilename);
+    return hls_driver(inputFilename, outputFilename);
    
 }
