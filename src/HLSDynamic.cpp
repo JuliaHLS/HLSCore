@@ -11,7 +11,6 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
 }
 
 
-
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
@@ -42,6 +41,7 @@ void loadDHLSPipeline(OpPassManager &pm) {
         handshake::createHandshakeMaterializeForksSinksPass());
   }
 }
+
 
 void loadHandshakeTransformsPipeline(OpPassManager &pm) {
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
@@ -92,14 +92,8 @@ LogicalResult doHLSFlowDynamic(
 
     auto addIRLevel = [&](HLSCore::IRLevel level, llvm::function_ref<void()> passAdder) {
         addIfNeeded(notSuppressed, [&]() {
-        // Add the pass if the input IR level is at least the current
-        // abstraction.
         if (targetAbstractionLayer(level))
             passAdder();
-        // Suppresses later passes if we're emitting IR and the output IR level is
-        // the current level.
-        /* if (outputFormat == OutputIR && irOutputLevel == level) */
-        /*     suppressLaterPasses = true; */
         });
     };
 
@@ -122,6 +116,7 @@ LogicalResult doHLSFlowDynamic(
 
     // Software lowering
     addIRLevel(PreCompile, [&]() {
+        pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Precompile");
