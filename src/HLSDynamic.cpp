@@ -17,6 +17,7 @@ void loadDHLSPipeline(OpPassManager &pm) {
   pm.addPass(circt::createFlattenMemRefPass());
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
+
   pm.addPass(mlir::createSCFToControlFlowPass());
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
@@ -25,10 +26,6 @@ void loadDHLSPipeline(OpPassManager &pm) {
       false,
       dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
-  /* pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass()); */
-  /* pm.addPass(circt::createFlattenMemRefPass()); */
-  /* pm.nest<func::FuncOp>().addPass( */
-      /* circt::handshake::createHandshakeLegalizeMemrefsPass()); */
 
 
   pm.addNestedPass<circt::handshake::FuncOp>(circt::handshake::createHandshakeRemoveBuffersPass());
@@ -107,7 +104,6 @@ LogicalResult doHLSFlowDynamic(
 
 
     // Resolve blocks with multiple predescessors
-    /* pm.addPass(circt::createInsertMergeBlocksPass()); */
 
     HLSCore::logging::runtime_log<std::string>("Building passes");
 
@@ -123,8 +119,15 @@ LogicalResult doHLSFlowDynamic(
         // legalise return types
         pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
 
-        // lower linalg to cf
+        // lower linalg to affine
         pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
+
+        //TODO: this is where we would write the pass that fixes the data flow, if required
+
+        // allow merge multiple basic block sources
+        /* pm.addPass(circt::createInsertMergeBlocksPass()); */
+
+        // lower affine to cf
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
 
@@ -188,7 +191,9 @@ LogicalResult doHLSFlowDynamic(
 
     /*if (loweringOptions.getNumOccurrences())*/
     /*  loweringOptions.setAsAttribute(module);*/
-    // Go execute!
+
+    HLSCore::logging::runtime_log<std::string>("Trying to start MLIR Lowering Process");
+
     if (failed(pm.run(module)))
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");

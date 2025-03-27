@@ -87,6 +87,7 @@ set(CIRCT_LIBS
         MLIROptLib
         MLIRParser
         MLIRControlFlowDialect
+        MLIRControlFlowTransforms
         MLIRTosaDialect
         MLIRBufferizationDialect
         MLIRTensorDialect
@@ -102,11 +103,13 @@ set(CIRCT_LIBS
 target_link_libraries(HLSCore
     PRIVATE
     ${CIRCT_LIBS}
+    LLVMSupport
 )
 
 target_link_libraries(HLSCore_C_API
     PRIVATE
     ${CIRCT_LIBS}
+    LLVMSupport
 )
 
 # Include MLIR and LLVM headers

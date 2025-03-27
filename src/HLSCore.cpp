@@ -31,7 +31,7 @@ static cl::opt<IRLevel> inputLevelOpt(
         clEnumValN(IRLevel::RTL, "RTL", "RTL level Input"),
         clEnumValN(IRLevel::SV, "SV", "SV level Input")
     ),
-    cl::init(IRLevel::SV)
+    cl::init(IRLevel::High)
 );
 
 
@@ -103,6 +103,7 @@ int hls_driver(const std::string& inputFilename, const std::string outputFilenam
 int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
+    irInputLevel = inputLevelOpt;
     irOutputLevel = outputLevelOpt;
 
     outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;

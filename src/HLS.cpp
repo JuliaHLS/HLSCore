@@ -124,6 +124,7 @@ HLSTool::HLSTool() {
       registry);
 
   mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
 
   // Register MLIR passes.
   mlir::tosa::registerTosaToLinalgPipelines();
