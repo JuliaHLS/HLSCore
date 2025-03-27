@@ -20,16 +20,11 @@ message(STATUS "Found CIRCT")
 # Set LLVM link components
 set(LLVM_LINK_COMPONENTS Support)
 
-# Find Boost
-find_package(Boost REQUIRED COMPONENTS program_options)
-message(STATUS "Found Boost")
-
 # Include directories
 include_directories(
     ${LLVM_INCLUDE_DIRS}
     ${MLIR_INCLUDE_DIRS}
     ${CIRCT_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
@@ -99,7 +94,6 @@ set(CIRCT_LIBS
 target_link_libraries(HLSCore
     PRIVATE
     ${CIRCT_LIBS}
-    ${Boost_LIBRARIES}
 )
 
 target_link_libraries(HLSCore_C_API
@@ -112,7 +106,6 @@ target_include_directories(HLSCore PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${MLIR_INCLUDE_DIRS}
     ${CIRCT_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
 )
 
