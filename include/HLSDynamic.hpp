@@ -68,6 +68,7 @@
 #include "IRLevel.hpp"
 #include "Options.hpp"
 #include "WriteSingleFileOutput.hpp"
+#include "CirctFriendlyLoops.hpp"
 
 
 

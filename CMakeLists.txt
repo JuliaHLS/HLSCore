@@ -36,6 +36,7 @@ add_executable(HLSCore
     src/HLSCore.cpp
     src/WriteSingleFileOutput.cpp
     src/OutputMemrefPassByRef.cpp
+    src/CirctFriendlyLoops.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -46,6 +47,7 @@ add_library(HLSCore_C_API SHARED
     src/WriteSingleFileOutput.cpp
     src/HLS_C_API.cpp
     src/OutputMemrefPassByRef.cpp
+    src/CirctFriendlyLoops.cpp
 )
 
 # Update compile flags for LLVM

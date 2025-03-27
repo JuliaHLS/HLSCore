@@ -1,8 +1,30 @@
 #include "HLSDynamic.hpp"
 #include <mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h>
 
-namespace HLSCore {
+// PASSES:
 
+#include "mlir/Dialect/Linalg/Passes.h"
+
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Arith/Utils/Utils.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Linalg/Passes.h.inc"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Dialect/Linalg/Utils/Utils.h"
+#include "mlir/Dialect/SCF/Transforms/Transforms.h"
+#include "mlir/Dialect/SCF/Utils/AffineCanonicalizationUtils.h"
+#include "mlir/IR/AffineExpr.h"
+#include "mlir/IR/AffineMap.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/FoldUtils.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/ADT/TypeSwitch.h"
+
+namespace HLSCore {
 /// Create a simple canonicalizer pass.
 std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   mlir::GreedyRewriteConfig config;
@@ -10,7 +32,6 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
   return mlir::createCanonicalizerPass(config);
 }
-
 
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
@@ -22,13 +43,12 @@ void loadDHLSPipeline(OpPassManager &pm) {
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
   // DHLS conversion
-  pm.addPass(circt::createCFToHandshakePass(
-      false,
-      dynParallelism != Pipelining));
+  pm.addPass(
+      circt::createCFToHandshakePass(false, dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
 
-
-  pm.addNestedPass<circt::handshake::FuncOp>(circt::handshake::createHandshakeRemoveBuffersPass());
+  pm.addNestedPass<circt::handshake::FuncOp>(
+      circt::handshake::createHandshakeRemoveBuffersPass());
 
   if (dynParallelism == Locking) {
     pm.nest<handshake::FuncOp>().addPass(
@@ -39,7 +59,6 @@ void loadDHLSPipeline(OpPassManager &pm) {
         handshake::createHandshakeMaterializeForksSinksPass());
   }
 }
-
 
 void loadHandshakeTransformsPipeline(OpPassManager &pm) {
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
@@ -74,132 +93,142 @@ void loadHWLoweringPipeline(OpPassManager &pm) {
   modulePM.addPass(sv::createPrettifyVerilogPass());
 }
 
-[[nodiscard]] mlir::bufferization::OneShotBufferizePassOptions generateBufferConfig() {
-    auto buff_opts = mlir::bufferization::OneShotBufferizePassOptions();
-    buff_opts.functionBoundaryTypeConversion = mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
-    buff_opts.bufferizeFunctionBoundaries = true;
+[[nodiscard]] mlir::bufferization::OneShotBufferizePassOptions
+generateBufferConfig() {
+  auto buff_opts = mlir::bufferization::OneShotBufferizePassOptions();
+  buff_opts.functionBoundaryTypeConversion =
+      mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
+  buff_opts.bufferizeFunctionBoundaries = true;
 
-    return buff_opts;
+  return buff_opts;
 }
 
-
 LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module, const std::string& outputFilename,
+    PassManager &pm, ModuleOp module, const std::string &outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-    bool suppressLaterPasses = false;
-    auto notSuppressed = [&]() { return !suppressLaterPasses; };
-    auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
+  bool suppressLaterPasses = false;
+  auto notSuppressed = [&]() { return !suppressLaterPasses; };
+  auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
                          llvm::function_ref<void()> passAdder) {
     if (predicate())
       passAdder();
-    };
+  };
 
-    auto addIRLevel = [&](HLSCore::IRLevel level, llvm::function_ref<void()> passAdder) {
-        addIfNeeded(notSuppressed, [&]() {
-        if (targetAbstractionLayer(level))
-            passAdder();
-        });
-    };
-
-
-    // Resolve blocks with multiple predescessors
-
-    HLSCore::logging::runtime_log<std::string>("Building passes");
-
-    // Software lowering
-    addIRLevel(PreCompile, [&]() {
-        // lower tosa to Linalg
-        pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
-
-        // generate buffers
-        pm.addPass(mlir::bufferization::createOneShotBufferizePass(generateBufferConfig()));
-        pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
-
-        // legalise return types
-        pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
-
-        // lower linalg to affine
-        pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
-
-        //TODO: this is where we would write the pass that fixes the data flow, if required
-
-        // allow merge multiple basic block sources
-        /* pm.addPass(circt::createInsertMergeBlocksPass()); */
-
-        // lower affine to cf
-        pm.addPass(mlir::createLowerAffinePass());
-        pm.addPass(mlir::createSCFToControlFlowPass());
-
-        // log
-        HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Precompile");
+  auto addIRLevel = [&](HLSCore::IRLevel level,
+                        llvm::function_ref<void()> passAdder) {
+    addIfNeeded(notSuppressed, [&]() {
+      if (targetAbstractionLayer(level))
+        passAdder();
     });
+  };
 
-    addIRLevel(Core, [&]() { 
-            loadDHLSPipeline(pm); 
-            HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Core");
-    });
+  // Resolve blocks with multiple predescessors
 
-    addIRLevel(PostCompile,
-             [&]() { 
-             loadHandshakeTransformsPipeline(pm); 
+  HLSCore::logging::runtime_log<std::string>("Building passes");
 
-            HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to PostCompile");
-     });
+  // Software lowering
+  addIRLevel(PreCompile, [&]() {
+    // lower tosa to Linalg
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
 
-    // HW path.
+    // generate buffers
+    pm.addPass(mlir::bufferization::createOneShotBufferizePass(
+        generateBufferConfig()));
+    pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
 
-    addIRLevel(RTL, [&]() {
-        pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
-        if (withDC) {
-            pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
-            // This pass sometimes resolves an error in the
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.nest<hw::HWModuleOp>().addPass(
-              circt::dc::createDCMaterializeForksSinksPass());
-            // TODO: We assert without a canonicalizer pass here. Debug.
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.addPass(circt::createDCToHWPass());
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.addPass(circt::createMapArithToCombPass());
-            pm.addPass(createSimpleCanonicalizerPass());
-        } else {
-            pm.addPass(circt::createHandshakeToHWPass());
-        }
-        pm.addPass(createSimpleCanonicalizerPass());
-        loadESILoweringPipeline(pm);
+    // legalise return types
+    pm.addNestedPass<mlir::func::FuncOp>(
+        HLSPasses::createOutputMemrefPassByRef());
 
-        HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to RTL");
-    });
+    // lower linalg to affine
+    pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
 
-    addIRLevel(SV, [&]() { 
-        loadHWLoweringPipeline(pm); 
+    // TODO: this is where we would write the pass that fixes the data flow, if
+    // required
 
-        // handle output
-        if (traceIVerilog)
-        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+    // allow merge multiple basic block sources
 
-        if (outputFormat == OutputVerilog) {
-            pm.addPass(createExportVerilogPass((*outputFile)->os()));
-        } else if (outputFormat == OutputSplitVerilog) {
-            pm.addPass(createExportSplitVerilogPass(outputFilename));
-        }
+    // lower affine to cf
+    /* pm.addPass(mlir::createLowerAffinePass()); */
+    pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
+    pm.addPass(mlir::createSCFToControlFlowPass());
 
-        HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to SV");
-    });
+    pm.addPass(circt::createInsertMergeBlocksPass());
 
+    // log
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to Precompile");
+  });
 
-    /*if (loweringOptions.getNumOccurrences())*/
-    /*  loweringOptions.setAsAttribute(module);*/
+  addIRLevel(Core, [&]() {
+    loadDHLSPipeline(pm);
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to Core");
+  });
 
-    HLSCore::logging::runtime_log<std::string>("Trying to start MLIR Lowering Process");
+  addIRLevel(PostCompile, [&]() {
+    loadHandshakeTransformsPipeline(pm);
 
-    if (failed(pm.run(module)))
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to PostCompile");
+  });
+
+  // HW path.
+
+  addIRLevel(RTL, [&]() {
+    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+    if (withDC) {
+      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
+      // This pass sometimes resolves an error in the
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.nest<hw::HWModuleOp>().addPass(
+          circt::dc::createDCMaterializeForksSinksPass());
+      // TODO: We assert without a canonicalizer pass here. Debug.
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createDCToHWPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createMapArithToCombPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+    } else {
+      pm.addPass(circt::createHandshakeToHWPass());
+    }
+    pm.addPass(createSimpleCanonicalizerPass());
+    loadESILoweringPipeline(pm);
+
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to RTL");
+  });
+
+  addIRLevel(SV, [&]() {
+    loadHWLoweringPipeline(pm);
+
+    // handle output
+    if (traceIVerilog)
+      pm.addPass(circt::sv::createSVTraceIVerilogPass());
+
+    if (outputFormat == OutputVerilog) {
+      pm.addPass(createExportVerilogPass((*outputFile)->os()));
+    } else if (outputFormat == OutputSplitVerilog) {
+      pm.addPass(createExportSplitVerilogPass(outputFilename));
+    }
+
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to SV");
+  });
+
+  /*if (loweringOptions.getNumOccurrences())*/
+  /*  loweringOptions.setAsAttribute(module);*/
+
+  HLSCore::logging::runtime_log<std::string>(
+      "Trying to start MLIR Lowering Process");
+
+  if (failed(pm.run(module)))
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 
-    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
+  return HLSCore::output::writeSingleFileOutput(module, outputFilename,
+                                                outputFile);
 }
 
-
-}
+} // namespace HLSCore
