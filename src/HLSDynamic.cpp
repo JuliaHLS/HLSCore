@@ -74,9 +74,9 @@ void loadHWLoweringPipeline(OpPassManager &pm) {
   modulePM.addPass(sv::createPrettifyVerilogPass());
 }
 
-[[nodiscard]] mlir::bufferization::OneShotBufferizationOptions generateBufferConfig() {
-    auto buff_opts = mlir::bufferization::OneShotBufferizationOptions();
-    buff_opts.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
+[[nodiscard]] mlir::bufferization::OneShotBufferizePassOptions generateBufferConfig() {
+    auto buff_opts = mlir::bufferization::OneShotBufferizePassOptions();
+    buff_opts.functionBoundaryTypeConversion = mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
     buff_opts.bufferizeFunctionBoundaries = true;
 
     return buff_opts;

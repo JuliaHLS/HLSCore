@@ -132,7 +132,7 @@ HLSTool::HLSTool() {
   mlir::registerSCCPPass();
   mlir::registerInlinerPass();
   mlir::registerCanonicalizerPass();
-  mlir::bufferization::registerOneShotBufferize();
+  mlir::bufferization::registerOneShotBufferizePass();
 
   // Register CIRCT dialects.
   registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
