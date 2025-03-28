@@ -35,6 +35,8 @@ add_executable(HLSCore
     src/HLS.cpp
     src/HLSCore.cpp
     src/WriteSingleFileOutput.cpp
+    src/OutputMemrefPassByRef.cpp
+    src/CirctFriendlyLoops.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -44,6 +46,8 @@ add_library(HLSCore_C_API SHARED
     src/HLSCore.cpp
     src/WriteSingleFileOutput.cpp
     src/HLS_C_API.cpp
+    src/OutputMemrefPassByRef.cpp
+    src/CirctFriendlyLoops.cpp
 )
 
 # Update compile flags for LLVM
@@ -85,20 +89,29 @@ set(CIRCT_LIBS
         MLIROptLib
         MLIRParser
         MLIRControlFlowDialect
+        MLIRControlFlowTransforms
+        MLIRTosaDialect
+        MLIRBufferizationDialect
+        MLIRTensorDialect
         MLIRSupport
         MLIRTransforms
         MLIRSCFToControlFlow
+        MLIRTosaToLinalg
+        MLIRLinalgDialect
+        MLIRLinalgTransforms
 )
 
 # Link MLIR and CIRCT dependencies
 target_link_libraries(HLSCore
     PRIVATE
     ${CIRCT_LIBS}
+    LLVMSupport
 )
 
 target_link_libraries(HLSCore_C_API
     PRIVATE
     ${CIRCT_LIBS}
+    LLVMSupport
 )
 
 # Include MLIR and LLVM headers

@@ -1,7 +1,30 @@
 #include "HLSDynamic.hpp"
+#include <mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h>
+
+// PASSES:
+
+#include "mlir/Dialect/Linalg/Passes.h"
+
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Arith/Utils/Utils.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Linalg/Passes.h.inc"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Dialect/Linalg/Utils/Utils.h"
+#include "mlir/Dialect/SCF/Transforms/Transforms.h"
+#include "mlir/Dialect/SCF/Utils/AffineCanonicalizationUtils.h"
+#include "mlir/IR/AffineExpr.h"
+#include "mlir/IR/AffineMap.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/FoldUtils.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/ADT/TypeSwitch.h"
 
 namespace HLSCore {
-
 /// Create a simple canonicalizer pass.
 std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   mlir::GreedyRewriteConfig config;
@@ -10,21 +33,22 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   return mlir::createCanonicalizerPass(config);
 }
 
-
-
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
+
   pm.addPass(mlir::createSCFToControlFlowPass());
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
   // DHLS conversion
-  pm.addPass(circt::createCFToHandshakePass(
-      /*sourceConstants=*/false,
-      /*disableTaskPipelining=*/dynParallelism != Pipelining));
+  pm.addPass(
+      circt::createCFToHandshakePass(false, dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
+
+  pm.addNestedPass<circt::handshake::FuncOp>(
+      circt::handshake::createHandshakeRemoveBuffersPass());
 
   if (dynParallelism == Locking) {
     pm.nest<handshake::FuncOp>().addPass(
@@ -69,107 +93,142 @@ void loadHWLoweringPipeline(OpPassManager &pm) {
   modulePM.addPass(sv::createPrettifyVerilogPass());
 }
 
+[[nodiscard]] mlir::bufferization::OneShotBufferizePassOptions
+generateBufferConfig() {
+  auto buff_opts = mlir::bufferization::OneShotBufferizePassOptions();
+  buff_opts.functionBoundaryTypeConversion =
+      mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
+  buff_opts.bufferizeFunctionBoundaries = true;
 
+  return buff_opts;
+}
 
 LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module, const std::string& outputFilename,
+    PassManager &pm, ModuleOp module, const std::string &outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-    bool suppressLaterPasses = false;
-    auto notSuppressed = [&]() { return !suppressLaterPasses; };
-    auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
+  bool suppressLaterPasses = false;
+  auto notSuppressed = [&]() { return !suppressLaterPasses; };
+  auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
                          llvm::function_ref<void()> passAdder) {
     if (predicate())
       passAdder();
-    };
+  };
 
-    auto addIRLevel = [&](int level, llvm::function_ref<void()> passAdder) {
-        addIfNeeded(notSuppressed, [&]() {
-        // Add the pass if the input IR level is at least the current
-        // abstraction.
-        if (irInputLevel <= level)
-            passAdder();
-        // Suppresses later passes if we're emitting IR and the output IR level is
-        // the current level.
-        if (outputFormat == OutputIR && irOutputLevel == level)
-            suppressLaterPasses = true;
-        });
-    };
+  auto addIRLevel = [&](HLSCore::IRLevel level,
+                        llvm::function_ref<void()> passAdder) {
+    addIfNeeded(notSuppressed, [&]() {
+      if (targetAbstractionLayer(level))
+        passAdder();
+    });
+  };
+
+  // Resolve blocks with multiple predescessors
+
+  HLSCore::logging::runtime_log<std::string>("Building passes");
+
+  // Software lowering
+  addIRLevel(PreCompile, [&]() {
+    // lower tosa to Linalg
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+
+    // generate buffers
+    pm.addPass(mlir::bufferization::createOneShotBufferizePass(
+        generateBufferConfig()));
+    pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
+
+    // legalise return types
+    pm.addNestedPass<mlir::func::FuncOp>(
+        HLSPasses::createOutputMemrefPassByRef());
+
+    // lower linalg to affine
+    pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
+
+    // TODO: this is where we would write the pass that fixes the data flow, if
+    // required
 
 
-    // Resolve blocks with multiple predescessors
-    pm.addPass(circt::createInsertMergeBlocksPass());
-
-
-    // Software lowering
-    addIRLevel(PreCompile, [&]() {
+    // lower affine to cf
+    pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
     pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createSCFToControlFlowPass());
-    });
 
-    addIRLevel(Core, [&]() { loadDHLSPipeline(pm); });
-    addIRLevel(PostCompile,
-             [&]() { loadHandshakeTransformsPipeline(pm); });
+    // allow merge multiple basic block sources
+    pm.addPass(circt::createInsertMergeBlocksPass());
 
-    // HW path.
+    // log
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to Precompile");
+  });
 
-    addIRLevel(RTL, [&]() {
-        pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
-        if (withDC) {
-            pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
-            // This pass sometimes resolves an error in the
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.nest<hw::HWModuleOp>().addPass(
-              circt::dc::createDCMaterializeForksSinksPass());
-            // TODO: We assert without a canonicalizer pass here. Debug.
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.addPass(circt::createDCToHWPass());
-            pm.addPass(createSimpleCanonicalizerPass());
-            pm.addPass(circt::createMapArithToCombPass());
-            pm.addPass(createSimpleCanonicalizerPass());
-        } else {
-            pm.addPass(circt::createHandshakeToHWPass());
-        }
-        pm.addPass(createSimpleCanonicalizerPass());
-        loadESILoweringPipeline(pm);
-    });
+  addIRLevel(Core, [&]() {
+    loadDHLSPipeline(pm);
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to Core");
+  });
 
-    addIRLevel(SV, [&]() { 
-        loadHWLoweringPipeline(pm); 
+  addIRLevel(PostCompile, [&]() {
+    loadHandshakeTransformsPipeline(pm);
 
-        // handle output
-        if (traceIVerilog)
-        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to PostCompile");
+  });
 
-        if (outputFormat == OutputVerilog) {
-            pm.addPass(createExportVerilogPass((*outputFile)->os()));
-        } else if (outputFormat == OutputSplitVerilog) {
-            pm.addPass(createExportSplitVerilogPass(outputFilename));
-        }
-    });
+  // HW path.
 
-    if(targetAbstractionLayer(RTL)) {
-      if (traceIVerilog)
-        pm.addPass(circt::sv::createSVTraceIVerilogPass());
+  addIRLevel(RTL, [&]() {
+    pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+    if (withDC) {
+      pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
+      // This pass sometimes resolves an error in the
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.nest<hw::HWModuleOp>().addPass(
+          circt::dc::createDCMaterializeForksSinksPass());
+      // TODO: We assert without a canonicalizer pass here. Debug.
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createDCToHWPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+      pm.addPass(circt::createMapArithToCombPass());
+      pm.addPass(createSimpleCanonicalizerPass());
+    } else {
+      pm.addPass(circt::createHandshakeToHWPass());
+    }
+    pm.addPass(createSimpleCanonicalizerPass());
+    loadESILoweringPipeline(pm);
 
-      /*if (loweringOptions.getNumOccurrences())*/
-      /*  loweringOptions.setAsAttribute(module);*/
-      if (outputFormat == OutputVerilog) {
-        pm.addPass(createExportVerilogPass((*outputFile)->os()));
-      } else if (outputFormat == OutputSplitVerilog) {
-        pm.addPass(createExportSplitVerilogPass(outputFilename));
-      }
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to RTL");
+  });
+
+  addIRLevel(SV, [&]() {
+    loadHWLoweringPipeline(pm);
+
+    // handle output
+    if (traceIVerilog)
+      pm.addPass(circt::sv::createSVTraceIVerilogPass());
+
+    if (outputFormat == OutputVerilog) {
+      pm.addPass(createExportVerilogPass((*outputFile)->os()));
+    } else if (outputFormat == OutputSplitVerilog) {
+      pm.addPass(createExportSplitVerilogPass(outputFilename));
     }
 
+    HLSCore::logging::runtime_log<std::string>(
+        "Successfully added passes to lower to SV");
+  });
 
-    /*if (loweringOptions.getNumOccurrences())*/
-    /*  loweringOptions.setAsAttribute(module);*/
-    // Go execute!
-    if (failed(pm.run(module)))
-    return failure();
+  /*if (loweringOptions.getNumOccurrences())*/
+  /*  loweringOptions.setAsAttribute(module);*/
 
-    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
+  HLSCore::logging::runtime_log<std::string>(
+      "Trying to start MLIR Lowering Process");
+
+  if (failed(pm.run(module)))
+
+    HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
+
+  return HLSCore::output::writeSingleFileOutput(module, outputFilename,
+                                                outputFile);
 }
 
-
-}
+} // namespace HLSCore
