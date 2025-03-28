@@ -147,13 +147,13 @@ LogicalResult doHLSFlowDynamic(
     // TODO: this is where we would write the pass that fixes the data flow, if
     // required
 
-    // allow merge multiple basic block sources
 
     // lower affine to cf
-    /* pm.addPass(mlir::createLowerAffinePass()); */
     pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
+    pm.addPass(mlir::createLowerAffinePass());
     pm.addPass(mlir::createSCFToControlFlowPass());
 
+    // allow merge multiple basic block sources
     pm.addPass(circt::createInsertMergeBlocksPass());
 
     // log
