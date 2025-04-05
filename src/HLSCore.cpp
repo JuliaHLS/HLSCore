@@ -78,6 +78,38 @@ static cl::opt<bool> split_verilog_flag(
 );
 
 
+static cl::opt<bool> withESIOpt(
+    "enable_esi",
+    cl::desc("Toggle whether or ESI will be used to generate memory interfaces"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
+
+static cl::opt<bool> withTraceIVerilog(
+    "trace_iverilog",
+    cl::desc("Trace IVerilog"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
+
+static cl::opt<bool> withDCOpt(
+    "with_dc",
+    cl::desc("Lower with DC"),
+    cl::value_desc("Default: false"),
+    cl::init(false)
+);
+
+
+static cl::opt<int> bufferSizeOpt(
+    "buff_size",
+    cl::desc("Select Buffer Size"),
+    cl::value_desc("Default: 2"),
+    cl::init(2)
+);
+
+
 
 // driver program
 int hls_driver(const std::string& inputFilename, const std::string outputFilename) {
@@ -105,8 +137,14 @@ int main(int argc, char **argv) {
     logging::runtime_logging_flag = runtime_logging_flag;
     irInputLevel = inputLevelOpt;
     irOutputLevel = outputLevelOpt;
+    withESI = withESIOpt;
+    withDC = withDCOpt;
 
     outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;
+
+    traceIVerilog = withTraceIVerilog; 
+
+    bufferSize = bufferSizeOpt;
     
 
     if (split_verilog_flag && irOutputLevel != SV)

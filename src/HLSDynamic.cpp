@@ -47,10 +47,8 @@ void loadDHLSPipeline(OpPassManager &pm) {
       circt::createCFToHandshakePass(false, dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
 
-  pm.addNestedPass<circt::handshake::FuncOp>(
-      circt::handshake::createHandshakeRemoveBuffersPass());
-
   if (dynParallelism == Locking) {
+      HLSCore::logging::runtime_log<std::string>("LOCKING");
     pm.nest<handshake::FuncOp>().addPass(
         circt::handshake::createHandshakeLockFunctionsPass());
     // The locking pass does not adapt forks, thus this additional pass is
@@ -107,76 +105,72 @@ LogicalResult doHLSFlowDynamic(
     PassManager &pm, ModuleOp module, const std::string &outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-  bool suppressLaterPasses = false;
-  auto notSuppressed = [&]() { return !suppressLaterPasses; };
-  auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
+    bool suppressLaterPasses = false;
+    auto notSuppressed = [&]() { return !suppressLaterPasses; };
+    auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
                          llvm::function_ref<void()> passAdder) {
     if (predicate())
       passAdder();
-  };
+    };
 
-  auto addIRLevel = [&](HLSCore::IRLevel level,
+    auto addIRLevel = [&](HLSCore::IRLevel level,
                         llvm::function_ref<void()> passAdder) {
     addIfNeeded(notSuppressed, [&]() {
       if (targetAbstractionLayer(level))
         passAdder();
     });
-  };
+    };
 
-  // Resolve blocks with multiple predescessors
+    // Resolve blocks with multiple predescessors
 
-  HLSCore::logging::runtime_log<std::string>("Building passes");
+    HLSCore::logging::runtime_log<std::string>("Building passes");
 
-  // Software lowering
-  addIRLevel(PreCompile, [&]() {
-    // lower tosa to Linalg
-    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+    // Software lowering
+    addIRLevel(PreCompile, [&]() {
+        // lower tosa to Linalg
+        pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
 
-    // generate buffers
-    pm.addPass(mlir::bufferization::createOneShotBufferizePass(
-        generateBufferConfig()));
-    pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
+        // generate buffers
+        pm.addPass(mlir::bufferization::createOneShotBufferizePass(
+            generateBufferConfig()));
+        pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
 
-    // legalise return types
-    pm.addNestedPass<mlir::func::FuncOp>(
-        HLSPasses::createOutputMemrefPassByRef());
+        // legalise return types
+        pm.addNestedPass<mlir::func::FuncOp>(
+            HLSPasses::createOutputMemrefPassByRef());
 
-    // lower linalg to affine
-    pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
+        // lower linalg to affine
+        pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
 
-    // TODO: this is where we would write the pass that fixes the data flow, if
-    // required
+        // lower affine to cf
+        pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
+        pm.addPass(mlir::createLowerAffinePass());
+        pm.addPass(mlir::createSCFToControlFlowPass());
 
+        // allow merge multiple basic block sources
+        pm.addPass(circt::createInsertMergeBlocksPass());
 
-    // lower affine to cf
-    pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
-    pm.addPass(mlir::createLowerAffinePass());
-    pm.addPass(mlir::createSCFToControlFlowPass());
+        // log
+        HLSCore::logging::runtime_log<std::string>(
+            "Successfully added passes to lower to Precompile");
+    });
 
-    // allow merge multiple basic block sources
-    pm.addPass(circt::createInsertMergeBlocksPass());
+    addIRLevel(Core, [&]() {
+        loadDHLSPipeline(pm);
+        HLSCore::logging::runtime_log<std::string>(
+            "Successfully added passes to lower to Core");
+    });
 
-    // log
-    HLSCore::logging::runtime_log<std::string>(
-        "Successfully added passes to lower to Precompile");
-  });
-
-  addIRLevel(Core, [&]() {
-    loadDHLSPipeline(pm);
-    HLSCore::logging::runtime_log<std::string>(
-        "Successfully added passes to lower to Core");
-  });
-
-  addIRLevel(PostCompile, [&]() {
+    addIRLevel(PostCompile, [&]() {
     loadHandshakeTransformsPipeline(pm);
 
     HLSCore::logging::runtime_log<std::string>(
         "Successfully added passes to lower to PostCompile");
-  });
+    });
 
-  // HW path.
+    // HW path.
 
-  addIRLevel(RTL, [&]() {
+    addIRLevel(RTL, [&]() {
     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
     if (withDC) {
       pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
@@ -189,6 +183,7 @@ LogicalResult doHLSFlowDynamic(
       pm.addPass(circt::createDCToHWPass());
       pm.addPass(createSimpleCanonicalizerPass());
       pm.addPass(circt::createMapArithToCombPass());
+      pm.addPass(circt::dc::createDCMaterializeForksSinksPass());
       pm.addPass(createSimpleCanonicalizerPass());
     } else {
       pm.addPass(circt::createHandshakeToHWPass());
@@ -198,9 +193,9 @@ LogicalResult doHLSFlowDynamic(
 
     HLSCore::logging::runtime_log<std::string>(
         "Successfully added passes to lower to RTL");
-  });
+    });
 
-  addIRLevel(SV, [&]() {
+    addIRLevel(SV, [&]() {
     loadHWLoweringPipeline(pm);
 
     // handle output
@@ -215,20 +210,17 @@ LogicalResult doHLSFlowDynamic(
 
     HLSCore::logging::runtime_log<std::string>(
         "Successfully added passes to lower to SV");
-  });
+    });
 
-  /*if (loweringOptions.getNumOccurrences())*/
-  /*  loweringOptions.setAsAttribute(module);*/
 
-  HLSCore::logging::runtime_log<std::string>(
+    HLSCore::logging::runtime_log<std::string>(
       "Trying to start MLIR Lowering Process");
 
-  if (failed(pm.run(module)))
+    if (failed(pm.run(module)))
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 
-  return HLSCore::output::writeSingleFileOutput(module, outputFilename,
-                                                outputFile);
+    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
 }
 
 } // namespace HLSCore
