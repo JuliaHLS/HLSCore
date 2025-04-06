@@ -5,7 +5,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "IRLevel.hpp"
-#include "HLS.hpp"
 #include "HLSDynamic.hpp"
 #include "Options.hpp"
 #include "logging.hpp"
