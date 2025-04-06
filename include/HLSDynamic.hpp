@@ -88,6 +88,12 @@ public:
 protected:
     [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
 
+
+private:
+    void loadDHLSPipeline(OpPassManager &pm);
+    void loadHandshakeTransformsPipeline(OpPassManager &pm);
+    void loadESILoweringPipeline(OpPassManager &pm);
+    void loadHWLoweringPipeline(OpPassManager &pm);
 };
 
 

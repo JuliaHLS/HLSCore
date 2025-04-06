@@ -90,8 +90,12 @@ protected:
 
     // this is where you initialise the HLS flow.
     [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) = 0;
-};
 
+
+    [[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel);
+
+    [[nodiscard]] LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
+};
 
 
 }
