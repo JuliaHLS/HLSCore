@@ -18,4 +18,5 @@ void HLSTool_destroy(HLSTool* _tool);
 void HLSTool_setOptions(HLSTool* tool, HLSOptions* options);
 bool HLSTool_synthesise(HLSTool* tool);
 
+
 }
