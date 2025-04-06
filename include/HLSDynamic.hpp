@@ -1,6 +1,5 @@
 #pragma once
 
-#include "OutputMemrefPassByRef.h"
 
 #include <iostream>
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
@@ -67,15 +66,16 @@
 
 #include "IRLevel.hpp"
 #include "Options.hpp"
-#include "WriteSingleFileOutput.hpp"
 #include "CirctFriendlyLoops.hpp"
 #include "HLS.hpp"
-
+#include "OutputMemrefPassByRef.h"
+#include "logging.hpp"
 
 
 using namespace llvm;
 using namespace mlir;
 using namespace circt;
+
 
 namespace HLSCore {
 
