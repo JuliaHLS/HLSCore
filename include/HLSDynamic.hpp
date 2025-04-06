@@ -69,6 +69,7 @@
 #include "Options.hpp"
 #include "WriteSingleFileOutput.hpp"
 #include "CirctFriendlyLoops.hpp"
+#include "HLS.hpp"
 
 
 
@@ -78,8 +79,22 @@ using namespace circt;
 
 namespace HLSCore {
 
-LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module, const std::string& outputFilename,
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
+class HLSToolDynamic : public HLSTool {
+public:
+    HLSToolDynamic();
+
+    void setOptions(std::unique_ptr<Options>&& _opt);
+    bool synthesise();
+
+protected:
+    std::unique_ptr<Options> opt;
+    DialectRegistry registry;
+
+
+    [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
+
+};
+
+
 
 }

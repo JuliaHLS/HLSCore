@@ -61,9 +61,9 @@
 #include "circt/Support/LoweringOptionsParser.h"
 #include "circt/Support/Version.h"
 #include "circt/Transforms/Passes.h"
+#include "mlir/Conversion/TosaToLinalg/TosaToLinalg.h"
 
 #include "IRLevel.hpp"
-#include "HLSDynamic.hpp"
 
 
 
@@ -84,6 +84,17 @@ public:
 protected:
     std::unique_ptr<Options> opt;
     DialectRegistry registry;
+
+    LogicalResult processBuffer(MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
+
+    LogicalResult processInputSplit(MLIRContext &context, TimingScope &ts, std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
+
+    LogicalResult processInput(MLIRContext &context, TimingScope &ts, std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
+
+    // this is where you initialise the HLS flow.
+    [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) = 0;
 };
+
+
 
 }
