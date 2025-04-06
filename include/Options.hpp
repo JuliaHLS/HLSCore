@@ -130,19 +130,4 @@ public:
     }   
 };
 
-
-extern DynamicParallelismKind dynParallelism;
-extern bool withESI;
-extern std::string bufferingStrategy;
-extern unsigned bufferSize;
-extern IRLevel irInputLevel;
-extern IRLevel irOutputLevel;
-extern bool splitInputFile;
-
-extern OutputFormatKind outputFormat;
-extern bool traceIVerilog;
-extern bool withDC;
-extern bool verifyPasses;
-extern bool verifyDiagnostics;
-
 }

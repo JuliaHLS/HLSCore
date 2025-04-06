@@ -111,15 +111,14 @@ static cl::opt<int> bufferSizeOpt(
 
 
 // driver program
-int hls_driver(const std::string& inputFilename, const std::string outputFilename) {
+int hls_driver(std::unique_ptr<Options> options) {
     logging::runtime_log<std::string>("Starting HLS Tool");
 
     HLSToolDynamic hls;
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
 
-    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
-    hls.setOptions(std::move(opt));
+    hls.setOptions(std::move(options));
     
     logging::runtime_log<std::string>("Set up HLS Tool, starting synthesis");
 
@@ -134,23 +133,28 @@ int hls_driver(const std::string& inputFilename, const std::string outputFilenam
 int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
-    irInputLevel = inputLevelOpt;
-    irOutputLevel = outputLevelOpt;
-    withESI = withESIOpt;
-    withDC = withDCOpt;
 
-    outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;
+    std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
 
-    traceIVerilog = withTraceIVerilog; 
+    opt->irInputLevel = inputLevelOpt;
+    opt->irOutputLevel = outputLevelOpt;
+    opt->withESI = withESIOpt;
+    opt->withDC = withDCOpt;
 
-    bufferSize = bufferSizeOpt;
+    opt->outputFormat = split_verilog_flag ? HLSCore::OutputSplitVerilog : HLSCore::OutputVerilog;
+
+    opt->traceIVerilog = withTraceIVerilog; 
+
+    opt->bufferSize = bufferSizeOpt;
     
 
-    if (split_verilog_flag && irOutputLevel != SV)
+    if (split_verilog_flag && opt->irOutputLevel != SV)
         throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
 
 
+
+
     // start driver program
-    return hls_driver(inputFilename, outputFilename);
+    return hls_driver(std::move(opt));
    
 }

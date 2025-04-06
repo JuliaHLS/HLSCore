@@ -46,7 +46,7 @@ void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
   // DHLS conversion
   pm.addPass(
       circt::createCFToHandshakePass(false, opt->dynParallelism != Pipelining));
-  pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
+  pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(opt->withESI));
 
   if (opt->dynParallelism == Locking) {
       HLSCore::logging::runtime_log<std::string>("LOCKING");
@@ -203,9 +203,9 @@ LogicalResult HLSToolDynamic::runHLSFlow(
     if (opt->traceIVerilog)
       pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
-    if (outputFormat == OutputVerilog) {
+    if (opt->outputFormat == OutputVerilog) {
       pm.addPass(createExportVerilogPass((*outputFile)->os()));
-    } else if (outputFormat == OutputSplitVerilog) {
+    } else if (opt->outputFormat == OutputSplitVerilog) {
       pm.addPass(createExportSplitVerilogPass(outputFilename));
     }
 
