@@ -136,7 +136,7 @@ bool HLSTool::synthesise() {
 LogicalResult HLSTool::writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile) {
 
     // if output files are not written via CIRCT passes
-    if ((opt->outputFormat != OutputSplitVerilog && opt->outputFormat != HLSCore::OutputVerilog) || HLSCore::irOutputLevel != SV) {
+    if ((opt->outputFormat != OutputSplitVerilog && opt->outputFormat != HLSCore::OutputVerilog) || opt->irOutputLevel != SV) {
         HLSCore::logging::runtime_log<std::string>("Setting detected, HLSTool configured to write to a single file (including terminal)");
 
         // write to an output file if specified
