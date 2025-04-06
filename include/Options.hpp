@@ -18,22 +18,6 @@ public:
     [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const = 0;
     [[nodiscard]] const std::string getOutputFilename() const { return outputFilename; }
 
-    // getters and setters (allows for better debugging and access control)
-    // void setWithESI(bool _withESI) { withESI = _withESI; }
-    // [[nodiscard]] bool getWithESI() const { return withESI; }
-
-    // void setBufferSize(unsigned _bufferSize) { bufferSize = _bufferSize; }
-    // [[nodiscard]] unsigned getBufferSize() const { return bufferSize; }
-
-    // void setIrInputLevel (IRLevel _irInputLevel) { irInputLevel = _irInputLevel; }
-    // [[nodiscard]] IRLevel getIrInputLevel () const { return irInputLevel; }
-
-    // void setIrOutputLevel (IRLevel _irOutputLevel) { irOutputLevel = _irOutputLevel; }
-    // [[nodiscard]] IRLevel setIrOutputLevel () const { return irOutputLevel; }
-
-    // void set 
-
-
     Options()
     {
         // initialise default Options
@@ -70,25 +54,8 @@ public:
     bool verifyPasses;
     bool verifyDiagnostics;
 
-
 protected:
     std::string outputFilename;
-
-    // Required Options
-    // bool withESI;
-
-    // std::string bufferingStrategy;
-    // unsigned bufferSize;
-
-    // IRLevel irInputLevel;
-    // IRLevel irOutputLevel;
-    // bool splitInputFile; 
-
-    // OutputFormatKind outputFormat;
-    // bool traceIVerilog;
-    // bool withDC;
-    // bool verifyPasses;
-    // bool verifyDiagnostics;
 };
 
 class OptionsString : public Options {
