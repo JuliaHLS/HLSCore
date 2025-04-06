@@ -81,16 +81,11 @@ namespace HLSCore {
 
 class HLSToolDynamic : public HLSTool {
 public:
-    HLSToolDynamic();
-
-    void setOptions(std::unique_ptr<Options>&& _opt);
-    bool synthesise();
+    HLSToolDynamic() {
+        logging::runtime_log("Using Dynamically Scheduled HLS flow");
+    }
 
 protected:
-    std::unique_ptr<Options> opt;
-    DialectRegistry registry;
-
-
     [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
 
 };

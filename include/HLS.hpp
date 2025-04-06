@@ -62,11 +62,8 @@
 #include "circt/Support/Version.h"
 #include "circt/Transforms/Passes.h"
 #include "mlir/Conversion/TosaToLinalg/TosaToLinalg.h"
-
+ 
 #include "IRLevel.hpp"
-
-
-
 
 using namespace llvm;
 using namespace mlir;
