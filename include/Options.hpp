@@ -40,6 +40,8 @@ public:
         withESI = false;
         bufferSize = 2;
 
+        dynParallelism = Pipelining;
+
         irInputLevel = High;
         irOutputLevel = SV;
         splitInputFile = false;
@@ -53,6 +55,7 @@ public:
 
     // public access to simplify C-API interaction
     bool withESI;
+    DynamicParallelismKind dynParallelism; 
 
     std::string bufferingStrategy;
     unsigned bufferSize;
@@ -127,9 +130,6 @@ public:
     }   
 };
 
-
-// determine if the current level is within the target range
-[[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel);
 
 extern DynamicParallelismKind dynParallelism;
 extern bool withESI;

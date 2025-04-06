@@ -12,6 +12,6 @@
 
 namespace HLSCore::output {
 
-[[nodiscard]] llvm::LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
+// [[nodiscard]] llvm::LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
 
 }

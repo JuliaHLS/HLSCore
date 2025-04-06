@@ -22,7 +22,7 @@ LogicalResult HLSTool::processBuffer(
 
     // apply pass manager command line options.
     PassManager pm(&context);
-    pm.enableVerifier(verifyPasses);
+    pm.enableVerifier(opt->verifyPasses);
     pm.enableTiming(ts);
     if (failed(applyPassManagerCLOptions(pm)))
     return failure();
@@ -50,7 +50,7 @@ LogicalResult HLSTool::processInputSplit(
     llvm::SourceMgr sourceMgr;
     sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
 
-    if (!verifyDiagnostics) {
+    if (!opt->verifyDiagnostics) {
         SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
         return processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
     }
@@ -70,7 +70,7 @@ LogicalResult HLSTool::processInput(MLIRContext &context, TimingScope &ts,
              std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename,
              std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-    if (!splitInputFile) {
+    if (!opt->splitInputFile) {
         HLSCore::logging::runtime_log("Processing InputSplit");
         return processInputSplit(context, ts, std::move(input), outputFilename, outputFile);
     }
@@ -107,7 +107,7 @@ bool HLSTool::synthesise() {
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
     
     // create output file, if not already handled by CIRCT 
-    if(outputFormat != OutputSplitVerilog) {
+    if(opt->outputFormat != OutputSplitVerilog) {
         outputFile.emplace(mlir::openOutputFile(opt->getOutputFilename(), &errorMessage));
 
         // error handling
@@ -133,7 +133,24 @@ bool HLSTool::synthesise() {
     return true; 
 }
 
+LogicalResult HLSTool::writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile) {
 
+    // if output files are not written via CIRCT passes
+    if ((opt->outputFormat != OutputSplitVerilog && opt->outputFormat != HLSCore::OutputVerilog) || HLSCore::irOutputLevel != SV) {
+        HLSCore::logging::runtime_log<std::string>("Setting detected, HLSTool configured to write to a single file (including terminal)");
+
+        // write to an output file if specified
+        HLSCore::logging::runtime_log<std::string>("Writing to single file.");
+
+        HLSCore::logging::runtime_log<std::string>("Writing output...");
+        // print the output
+        module->print((*outputFile)->os());
+    }
+
+
+    // return success
+    return llvm::LogicalResult::success();
+}
 
 
 HLSTool::HLSTool() {
@@ -184,4 +201,10 @@ void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
     opt = std::move(_opt);
 }
 
+bool HLSTool::targetAbstractionLayer(IRLevel currentLevel) {
+    return currentLevel <= opt->irOutputLevel && currentLevel >= opt->irInputLevel; 
 }
+
+
+}
+
