@@ -20,7 +20,39 @@ public:
 
     Options()
     {
+        // initialise default Options
+        withESI = false;
+        bufferSize = 2;
+
+        dynParallelism = Pipelining;
+
+        irInputLevel = High;
+        irOutputLevel = SV;
+        splitInputFile = false;
+
+        outputFormat = OutputVerilog;
+        traceIVerilog = false;
+        withDC = false;
+        verifyPasses = true;
+        verifyDiagnostics = false;
     }
+
+    // public access to simplify C-API interaction
+    bool withESI;
+    DynamicParallelismKind dynParallelism; 
+
+    std::string bufferingStrategy;
+    unsigned bufferSize;
+
+    IRLevel irInputLevel;
+    IRLevel irOutputLevel;
+    bool splitInputFile; 
+
+    OutputFormatKind outputFormat;
+    bool traceIVerilog;
+    bool withDC;
+    bool verifyPasses;
+    bool verifyDiagnostics;
 
 protected:
     std::string outputFilename;
@@ -28,9 +60,11 @@ protected:
 
 class OptionsString : public Options {
 public:
-    const std::string inputMlir;
+    std::string inputMlir;
 
     [[nodiscard]] virtual std::unique_ptr<llvm::MemoryBuffer> getInputBuffer() const override { return llvm::MemoryBuffer::getMemBuffer(inputMlir); }
+
+    OptionsString()=delete;
 
     OptionsString(const std::string& _inputMlir, const std::string& _outputFilename) :
         inputMlir (_inputMlir)
@@ -39,6 +73,32 @@ public:
         if (_outputFilename.size() == 0) outputFilename = "-";
         else outputFilename = _outputFilename;
     }
+
+    // copy ctr (ptr) implemented as a deep copy
+    OptionsString(const OptionsString* other) {
+        // check if it is a nullptr
+        if (other) {
+            this->inputMlir = other->inputMlir;
+            this->outputFilename = other->outputFilename;
+
+            this->withESI = other->withESI;
+            this->dynParallelism = other->dynParallelism;
+
+            this->bufferingStrategy = other->bufferingStrategy;
+            this->bufferSize = other->bufferSize;
+
+            this->irInputLevel = other->irInputLevel;
+            this->irOutputLevel = other->irOutputLevel;
+            this->splitInputFile = other->splitInputFile;
+
+            this->outputFormat = other->outputFormat;
+            this->traceIVerilog = other->traceIVerilog;
+            this->withDC = other->withDC;
+            this->verifyPasses = other->verifyPasses;
+            this->verifyDiagnostics = other->verifyDiagnostics;
+        }
+    }
+
 };
 
 class OptionsFile : public Options {
@@ -56,6 +116,8 @@ public:
         return buffer;
     }
 
+    OptionsFile()=delete;
+
     OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename) :
         inputFilename (_inputFilename)
     {
@@ -64,23 +126,5 @@ public:
         else outputFilename = _outputFilename;
     }   
 };
-
-
-// determine if the current level is within the target range
-[[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel);
-
-extern DynamicParallelismKind dynParallelism;
-extern bool withESI;
-extern std::string bufferingStrategy;
-extern unsigned bufferSize;
-extern IRLevel irInputLevel;
-extern IRLevel irOutputLevel;
-extern bool splitInputFile;
-
-extern OutputFormatKind outputFormat;
-extern bool traceIVerilog;
-extern bool withDC;
-extern bool verifyPasses;
-extern bool verifyDiagnostics;
 
 }

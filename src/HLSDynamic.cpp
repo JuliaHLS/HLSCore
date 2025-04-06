@@ -33,7 +33,8 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   return mlir::createCanonicalizerPass(config);
 }
 
-void loadDHLSPipeline(OpPassManager &pm) {
+
+void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
   pm.nest<func::FuncOp>().addPass(
@@ -44,10 +45,10 @@ void loadDHLSPipeline(OpPassManager &pm) {
 
   // DHLS conversion
   pm.addPass(
-      circt::createCFToHandshakePass(false, dynParallelism != Pipelining));
-  pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(withESI));
+      circt::createCFToHandshakePass(false, opt->dynParallelism != Pipelining));
+  pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(opt->withESI));
 
-  if (dynParallelism == Locking) {
+  if (opt->dynParallelism == Locking) {
       HLSCore::logging::runtime_log<std::string>("LOCKING");
     pm.nest<handshake::FuncOp>().addPass(
         circt::handshake::createHandshakeLockFunctionsPass());
@@ -58,24 +59,24 @@ void loadDHLSPipeline(OpPassManager &pm) {
   }
 }
 
-void loadHandshakeTransformsPipeline(OpPassManager &pm) {
+void HLSToolDynamic::loadHandshakeTransformsPipeline(OpPassManager &pm) {
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
   pm.nest<handshake::FuncOp>().addPass(
       handshake::createHandshakeMaterializeForksSinksPass());
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
   pm.nest<handshake::FuncOp>().addPass(
-      handshake::createHandshakeInsertBuffersPass(bufferingStrategy,
-                                                  bufferSize));
+      handshake::createHandshakeInsertBuffersPass(opt->bufferingStrategy,
+                                                  opt->bufferSize));
   pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 }
 
-void loadESILoweringPipeline(OpPassManager &pm) {
+void HLSToolDynamic::loadESILoweringPipeline(OpPassManager &pm) {
   pm.addPass(circt::esi::createESIPortLoweringPass());
   pm.addPass(circt::esi::createESIPhysicalLoweringPass());
   pm.addPass(circt::esi::createESItoHWPass());
 }
 
-void loadHWLoweringPipeline(OpPassManager &pm) {
+void HLSToolDynamic::loadHWLoweringPipeline(OpPassManager &pm) {
   pm.addPass(createSimpleCanonicalizerPass());
   pm.nest<hw::HWModuleOp>().addPass(circt::seq::createLowerSeqHLMemPass());
   pm.addPass(seq::createHWMemSimImplPass());
@@ -101,7 +102,7 @@ generateBufferConfig() {
   return buff_opts;
 }
 
-LogicalResult doHLSFlowDynamic(
+LogicalResult HLSToolDynamic::runHLSFlow(
     PassManager &pm, ModuleOp module, const std::string &outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
@@ -172,7 +173,7 @@ LogicalResult doHLSFlowDynamic(
 
     addIRLevel(RTL, [&]() {
     pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
-    if (withDC) {
+    if (opt->withDC) {
       pm.addPass(circt::createHandshakeToDC({"clock", "reset"}));
       // This pass sometimes resolves an error in the
       pm.addPass(createSimpleCanonicalizerPass());
@@ -199,12 +200,12 @@ LogicalResult doHLSFlowDynamic(
     loadHWLoweringPipeline(pm);
 
     // handle output
-    if (traceIVerilog)
+    if (opt->traceIVerilog)
       pm.addPass(circt::sv::createSVTraceIVerilogPass());
 
-    if (outputFormat == OutputVerilog) {
+    if (opt->outputFormat == OutputVerilog) {
       pm.addPass(createExportVerilogPass((*outputFile)->os()));
-    } else if (outputFormat == OutputSplitVerilog) {
+    } else if (opt->outputFormat == OutputSplitVerilog) {
       pm.addPass(createExportSplitVerilogPass(outputFilename));
     }
 
@@ -220,7 +221,7 @@ LogicalResult doHLSFlowDynamic(
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 
-    return HLSCore::output::writeSingleFileOutput(module, outputFilename, outputFile);
+    return writeSingleFileOutput(module, outputFilename, outputFile);
 }
 
 } // namespace HLSCore

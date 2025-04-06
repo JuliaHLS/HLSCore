@@ -1,6 +1,5 @@
 #pragma once
 
-#include "OutputMemrefPassByRef.h"
 
 #include <iostream>
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
@@ -67,19 +66,36 @@
 
 #include "IRLevel.hpp"
 #include "Options.hpp"
-#include "WriteSingleFileOutput.hpp"
 #include "CirctFriendlyLoops.hpp"
-
+#include "HLS.hpp"
+#include "OutputMemrefPassByRef.h"
+#include "logging.hpp"
 
 
 using namespace llvm;
 using namespace mlir;
 using namespace circt;
 
+
 namespace HLSCore {
 
-LogicalResult doHLSFlowDynamic(
-    PassManager &pm, ModuleOp module, const std::string& outputFilename,
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
+class HLSToolDynamic : public HLSTool {
+public:
+    HLSToolDynamic() {
+        logging::runtime_log("Using Dynamically Scheduled HLS flow");
+    }
+
+protected:
+    [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
+
+
+private:
+    void loadDHLSPipeline(OpPassManager &pm);
+    void loadHandshakeTransformsPipeline(OpPassManager &pm);
+    void loadESILoweringPipeline(OpPassManager &pm);
+    void loadHWLoweringPipeline(OpPassManager &pm);
+};
+
+
 
 }

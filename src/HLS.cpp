@@ -5,11 +5,8 @@
 
 namespace HLSCore {
 
-// --------------------------------------------------------------------------
-// Tool driver code
-// --------------------------------------------------------------------------
 /// Process a single buffer of the input.
-static LogicalResult processBuffer(
+LogicalResult HLSTool::processBuffer(
     MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
@@ -23,14 +20,14 @@ static LogicalResult processBuffer(
     if (!module)
     return failure();
 
-    // Apply any pass manager command line options.
+    // apply pass manager command line options.
     PassManager pm(&context);
-    pm.enableVerifier(verifyPasses);
+    pm.enableVerifier(opt->verifyPasses);
     pm.enableTiming(ts);
     if (failed(applyPassManagerCLOptions(pm)))
     return failure();
 
-    if (failed(doHLSFlowDynamic(pm, module.get(), outputFilename, outputFile)))
+    if (failed(runHLSFlow(pm, module.get(), outputFilename, outputFile)))
       return failure();
 
     // We intentionally "leak" the Module into the MLIRContext instead of
@@ -43,7 +40,7 @@ static LogicalResult processBuffer(
 /// Process a single split of the input. This allocates a source manager and
 /// creates a regular or verifying diagnostic handler, depending on whether
 /// the user set the verifyDiagnostics option.
-static LogicalResult processInputSplit(
+LogicalResult HLSTool::processInputSplit(
     MLIRContext &context, TimingScope &ts,
     std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
@@ -53,7 +50,7 @@ static LogicalResult processInputSplit(
     llvm::SourceMgr sourceMgr;
     sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
 
-    if (!verifyDiagnostics) {
+    if (!opt->verifyDiagnostics) {
         SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
         return processBuffer(context, ts, sourceMgr, outputFilename, outputFile);
     }
@@ -67,14 +64,13 @@ static LogicalResult processInputSplit(
     return sourceMgrHandler.verify();
 }
 
-/// Process the entire input provided by the user, splitting it up if the
+/// process the input provided by the user, splitting it up if the
 /// corresponding option was specified.
-static LogicalResult
-processInput(MLIRContext &context, TimingScope &ts,
+LogicalResult HLSTool::processInput(MLIRContext &context, TimingScope &ts,
              std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename,
              std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
-    if (!splitInputFile) {
+    if (!opt->splitInputFile) {
         HLSCore::logging::runtime_log("Processing InputSplit");
         return processInputSplit(context, ts, std::move(input), outputFilename, outputFile);
     }
@@ -89,22 +85,82 @@ processInput(MLIRContext &context, TimingScope &ts,
       llvm::outs());
 }
 
-static LogicalResult executeHlstool(MLIRContext &context, const std::string& inputMLIR) {
-    return success();
+bool HLSTool::synthesise() {
+    HLSCore::logging::runtime_log("Starting Synthesis");
+
+    MLIRContext context(registry);
+    // Create the timing manager we use to sample execution times.
+    DefaultTimingManager tm;
+    applyDefaultTimingManagerCLOptions(tm);
+    auto ts = tm.getRootScope();
+
+
+    HLSCore::logging::runtime_log("Parsing Input");
+    // Parse the input into a memBuffer
+    auto input = opt->getInputBuffer();
+
+    HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
+    HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
+
+    // process the input
+    std::string errorMessage;
+    std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
+    
+    // create output file, if not already handled by CIRCT 
+    if(opt->outputFormat != OutputSplitVerilog) {
+        outputFile.emplace(mlir::openOutputFile(opt->getOutputFilename(), &errorMessage));
+
+        // error handling
+        if(!*outputFile) {
+            llvm::errs() << "[HLSCore ERROR] :" << errorMessage << "\n";
+            return false;
+        }
+    }
+
+    // create outputFile
+
+    HLSCore::logging::runtime_log("Processing input MLIR");
+    if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
+        return false;
+
+    // close output file (clean-up)
+    if (outputFile.has_value())
+        (*outputFile)->keep();
+
+
+    HLSCore::logging::runtime_log("Emitted Output");
+
+    return true; 
+}
+
+LogicalResult HLSTool::writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile) {
+
+    // if output files are not written via CIRCT passes
+    if ((opt->outputFormat != OutputSplitVerilog && opt->outputFormat != HLSCore::OutputVerilog) || opt->irOutputLevel != SV) {
+        HLSCore::logging::runtime_log<std::string>("Setting detected, HLSTool configured to write to a single file (including terminal)");
+
+        // write to an output file if specified
+        HLSCore::logging::runtime_log<std::string>("Writing to single file.");
+
+        HLSCore::logging::runtime_log<std::string>("Writing output...");
+        // print the output
+        module->print((*outputFile)->os());
+    }
+
+
+    // return success
+    return llvm::LogicalResult::success();
 }
 
 
-
-
-
 HLSTool::HLSTool() {
-  // Register any pass manager command line options.
+  // register any pass manager command line options.
   registerMLIRContextCLOptions();
   registerPassManagerCLOptions();
   registerDefaultTimingManagerCLOptions();
   registerAsmPrinterCLOptions();
 
-  // Register MLIR dialects.
+  // register MLIR dialects.
   registry.insert<mlir::affine::AffineDialect>();
   registry.insert<mlir::memref::MemRefDialect>();
   registry.insert<mlir::func::FuncDialect>();
@@ -145,52 +201,10 @@ void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
     opt = std::move(_opt);
 }
 
-bool HLSTool::synthesise() {
-    HLSCore::logging::runtime_log("Starting Synthesis");
-
-    MLIRContext context(registry);
-    // Create the timing manager we use to sample execution times.
-    DefaultTimingManager tm;
-    applyDefaultTimingManagerCLOptions(tm);
-    auto ts = tm.getRootScope();
-
-
-    HLSCore::logging::runtime_log("Parsing Input");
-    // Parse the input into a memBuffer
-    auto input = opt->getInputBuffer();
-
-    HLSCore::logging::runtime_log<std::string>("Processing Buffer: ");
-    HLSCore::logging::runtime_log<llvm::StringRef>(input->getBuffer());
-
-    // process the input
-    std::string errorMessage;
-    std::optional<std::unique_ptr<llvm::ToolOutputFile>> outputFile;
-    
-    // create output file, if not already handled by CIRCT 
-    if(outputFormat != OutputSplitVerilog) {
-        outputFile.emplace(mlir::openOutputFile(opt->getOutputFilename(), &errorMessage));
-
-        // error handling
-        if(!*outputFile) {
-            llvm::errs() << "[HLSCore ERROR] :" << errorMessage << "\n";
-            return false;
-        }
-    }
-
-    // create outputFile
-
-    HLSCore::logging::runtime_log("Processing input MLIR");
-    if (failed(processInput(context, ts, std::move(input), opt->getOutputFilename(), outputFile)))
-        return false;
-
-    // close output file (clean-up)
-    if (outputFile.has_value())
-        (*outputFile)->keep();
-
-
-    HLSCore::logging::runtime_log("Emitted Output");
-
-    return true; 
+bool HLSTool::targetAbstractionLayer(IRLevel currentLevel) {
+    return currentLevel <= opt->irOutputLevel && currentLevel >= opt->irInputLevel; 
 }
 
+
 }
+
