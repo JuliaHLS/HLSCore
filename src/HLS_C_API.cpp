@@ -1,5 +1,5 @@
 #include "HLS_C_API.hpp"
-#include "HLS.hpp"
+#include "HLSDynamic.hpp"
 #include <memory>
 
 
@@ -11,7 +11,7 @@ struct HLSTool {
 HLSTool* HLSTool_create() {
     HLSTool* c_obj = new HLSTool();
 
-    c_obj->tool = new HLSCore::HLSTool();
+    c_obj->tool = new HLSCore::HLSToolDynamic();
 
     return c_obj;
 }

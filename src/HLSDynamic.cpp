@@ -33,6 +33,9 @@ std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
   return mlir::createCanonicalizerPass(config);
 }
 
+
+
+
 void loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
@@ -101,7 +104,7 @@ generateBufferConfig() {
   return buff_opts;
 }
 
-LogicalResult doHLSFlowDynamic(
+LogicalResult HLSToolDynamic::runHLSFlow(
     PassManager &pm, ModuleOp module, const std::string &outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 

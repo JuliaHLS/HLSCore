@@ -5,11 +5,8 @@
 
 namespace HLSCore {
 
-// --------------------------------------------------------------------------
-// Tool driver code
-// --------------------------------------------------------------------------
 /// Process a single buffer of the input.
-static LogicalResult processBuffer(
+LogicalResult HLSTool::processBuffer(
     MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
@@ -23,14 +20,14 @@ static LogicalResult processBuffer(
     if (!module)
     return failure();
 
-    // Apply any pass manager command line options.
+    // apply pass manager command line options.
     PassManager pm(&context);
     pm.enableVerifier(verifyPasses);
     pm.enableTiming(ts);
     if (failed(applyPassManagerCLOptions(pm)))
     return failure();
 
-    if (failed(doHLSFlowDynamic(pm, module.get(), outputFilename, outputFile)))
+    if (failed(runHLSFlow(pm, module.get(), outputFilename, outputFile)))
       return failure();
 
     // We intentionally "leak" the Module into the MLIRContext instead of
@@ -43,7 +40,7 @@ static LogicalResult processBuffer(
 /// Process a single split of the input. This allocates a source manager and
 /// creates a regular or verifying diagnostic handler, depending on whether
 /// the user set the verifyDiagnostics option.
-static LogicalResult processInputSplit(
+LogicalResult HLSTool::processInputSplit(
     MLIRContext &context, TimingScope &ts,
     std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
@@ -67,10 +64,9 @@ static LogicalResult processInputSplit(
     return sourceMgrHandler.verify();
 }
 
-/// Process the entire input provided by the user, splitting it up if the
+/// process the input provided by the user, splitting it up if the
 /// corresponding option was specified.
-static LogicalResult
-processInput(MLIRContext &context, TimingScope &ts,
+LogicalResult HLSTool::processInput(MLIRContext &context, TimingScope &ts,
              std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename,
              std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
@@ -87,62 +83,6 @@ processInput(MLIRContext &context, TimingScope &ts,
         return processInputSplit(context, ts, std::move(buffer), outputFilename, outputFile);
       },
       llvm::outs());
-}
-
-static LogicalResult executeHlstool(MLIRContext &context, const std::string& inputMLIR) {
-    return success();
-}
-
-
-
-
-
-HLSTool::HLSTool() {
-  // Register any pass manager command line options.
-  registerMLIRContextCLOptions();
-  registerPassManagerCLOptions();
-  registerDefaultTimingManagerCLOptions();
-  registerAsmPrinterCLOptions();
-
-  // Register MLIR dialects.
-  registry.insert<mlir::affine::AffineDialect>();
-  registry.insert<mlir::memref::MemRefDialect>();
-  registry.insert<mlir::func::FuncDialect>();
-  registry.insert<mlir::arith::ArithDialect>();
-  registry.insert<mlir::cf::ControlFlowDialect>();
-  registry.insert<mlir::scf::SCFDialect>();
-  registry.insert<mlir::tosa::TosaDialect>();
-  registry.insert<mlir::tensor::TensorDialect>();
-  registry.insert<mlir::linalg::LinalgDialect>();
-  registry.insert<mlir::bufferization::BufferizationDialect>();
-
-  /* registerAllDialects(registry); */
-  mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
-  mlir::linalg::registerAllDialectInterfaceImplementations(registry);
-
-  bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
-      registry);
-
-  mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
-  mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
-
-  // Register MLIR passes.
-  mlir::tosa::registerTosaToLinalgPipelines();
-  mlir::registerCSEPass();
-  mlir::registerSCCPPass();
-  mlir::registerInlinerPass();
-  mlir::registerCanonicalizerPass();
-  mlir::bufferization::registerOneShotBufferizePass();
-
-  // Register CIRCT dialects.
-  registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-                  sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
-                  calyx::CalyxDialect>();
-
-}
-
-void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
-    opt = std::move(_opt);
 }
 
 bool HLSTool::synthesise() {
@@ -191,6 +131,57 @@ bool HLSTool::synthesise() {
     HLSCore::logging::runtime_log("Emitted Output");
 
     return true; 
+}
+
+
+
+
+HLSTool::HLSTool() {
+  // register any pass manager command line options.
+  registerMLIRContextCLOptions();
+  registerPassManagerCLOptions();
+  registerDefaultTimingManagerCLOptions();
+  registerAsmPrinterCLOptions();
+
+  // register MLIR dialects.
+  registry.insert<mlir::affine::AffineDialect>();
+  registry.insert<mlir::memref::MemRefDialect>();
+  registry.insert<mlir::func::FuncDialect>();
+  registry.insert<mlir::arith::ArithDialect>();
+  registry.insert<mlir::cf::ControlFlowDialect>();
+  registry.insert<mlir::scf::SCFDialect>();
+  registry.insert<mlir::tosa::TosaDialect>();
+  registry.insert<mlir::tensor::TensorDialect>();
+  registry.insert<mlir::linalg::LinalgDialect>();
+  registry.insert<mlir::bufferization::BufferizationDialect>();
+
+  /* registerAllDialects(registry); */
+  mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::linalg::registerAllDialectInterfaceImplementations(registry);
+
+  bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
+      registry);
+
+  mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
+
+  // Register MLIR passes.
+  mlir::tosa::registerTosaToLinalgPipelines();
+  mlir::registerCSEPass();
+  mlir::registerSCCPPass();
+  mlir::registerInlinerPass();
+  mlir::registerCanonicalizerPass();
+  mlir::bufferization::registerOneShotBufferizePass();
+
+  // Register CIRCT dialects.
+  registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
+                  sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
+                  calyx::CalyxDialect>();
+
+}
+
+void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {
+    opt = std::move(_opt);
 }
 
 }

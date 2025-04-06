@@ -115,7 +115,7 @@ static cl::opt<int> bufferSizeOpt(
 int hls_driver(const std::string& inputFilename, const std::string outputFilename) {
     logging::runtime_log<std::string>("Starting HLS Tool");
 
-    HLSTool hls;
+    HLSToolDynamic hls;
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
 
