@@ -141,7 +141,7 @@ LogicalResult HLSToolDynamic::runHLSFlow(
             HLSPasses::createOutputMemrefPassByRef());
 
         // lower linalg to affine
-        pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
+        // pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
 
         // lower affine to cf
         pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
