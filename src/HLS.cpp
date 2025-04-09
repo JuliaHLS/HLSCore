@@ -194,12 +194,6 @@ HLSTool::HLSTool() {
 
   mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
   mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
-
-  // Register CIRCT dialects.
-  registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-                  sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
-                  calyx::CalyxDialect>();
-
 }
 
 void HLSTool::setOptions(std::unique_ptr<Options>&& _opt) {

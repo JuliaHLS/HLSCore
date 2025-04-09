@@ -83,6 +83,11 @@ class HLSToolDynamic : public HLSTool {
 public:
     HLSToolDynamic() {
         logging::runtime_log("Using Dynamically Scheduled HLS flow");
+
+
+        // register CIRCT dialects.
+        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
+            sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect>();
     }
 
 protected:

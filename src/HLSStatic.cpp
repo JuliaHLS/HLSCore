@@ -2,6 +2,7 @@
 #include <circt/Conversion/CalyxToFSM.h>
 #include <circt/Conversion/FSMToSV.h>
 #include <circt/Conversion/SCFToCalyx.h>
+#include <circt/Conversion/SeqToSV.h>
 #include <mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h>
 
 // PASSES:
@@ -121,6 +122,7 @@ LogicalResult HLSToolStatic::runHLSFlow(
 
     addIRLevel(SV, [&]() {
         pm.addPass(circt::createConvertFSMToSVPass());
+        pm.addPass(circt::createLowerSeqToSVPass());
 
         // handle output
         if (opt->traceIVerilog)

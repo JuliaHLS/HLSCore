@@ -88,6 +88,10 @@ class HLSToolStatic : public HLSTool {
 public:
     HLSToolStatic() {
         logging::runtime_log("Using Statically Scheduled HLS flow");
+
+        // register CIRCT dialects
+        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
+            sv::SVDialect, calyx::CalyxDialect>();
     }
 
 protected:
