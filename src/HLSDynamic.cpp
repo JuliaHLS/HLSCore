@@ -140,11 +140,10 @@ LogicalResult HLSToolDynamic::runHLSFlow(
         pm.addNestedPass<mlir::func::FuncOp>(
             HLSPasses::createOutputMemrefPassByRef());
 
-        // lower linalg to affine
-        pm.addPass(mlir::createConvertLinalgToAffineLoopsPass());
+        // lower linalg to affine in a CIRCT friendly manner
+        pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
 
         // lower affine to cf
-        pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
 

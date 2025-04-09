@@ -108,6 +108,14 @@ static cl::opt<int> bufferSizeOpt(
     cl::init(2)
 );
 
+static cl::opt<std::string> bufferingStrategyOpt(
+    "buff-strategy",
+    cl::desc("Buffering Strategy to apply"),
+    cl::value_desc("Default: all"),
+    cl::init("all")
+);
+
+
 
 
 // driver program
@@ -146,6 +154,7 @@ int main(int argc, char **argv) {
     opt->traceIVerilog = withTraceIVerilog; 
 
     opt->bufferSize = bufferSizeOpt;
+    opt->bufferingStrategy = bufferingStrategyOpt;
     
 
     if (split_verilog_flag && opt->irOutputLevel != SV)

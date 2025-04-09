@@ -45,10 +45,14 @@ LogicalResult HLSTool::processInputSplit(
     std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename,
     std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) {
 
+    HLSCore::logging::runtime_log<std::string>("Processing InputSplit");
+
     if (!buffer) HLSCore::logging::runtime_log<std::string>("Error: Buffer empty");
 
     llvm::SourceMgr sourceMgr;
+    HLSCore::logging::runtime_log<std::string>("Adding new source buffer");
     sourceMgr.AddNewSourceBuffer(std::move(buffer), llvm::SMLoc());
+    HLSCore::logging::runtime_log<std::string>("Successfully added new source buffer");
 
     if (!opt->verifyDiagnostics) {
         SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
