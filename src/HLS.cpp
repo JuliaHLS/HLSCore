@@ -5,6 +5,15 @@
 
 namespace HLSCore {
 
+/// Create a simple canonicalizer pass.
+std::unique_ptr<Pass> HLSTool::createSimpleCanonicalizerPass() {
+  mlir::GreedyRewriteConfig config;
+  config.useTopDownTraversal = true;
+  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
+  return mlir::createCanonicalizerPass(config);
+}
+
+
 /// Process a single buffer of the input.
 LogicalResult HLSTool::processBuffer(
     MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename,

@@ -1,12 +1,11 @@
 #pragma once
 
-#include "Options.hpp"
-#include <memory>
-
 
 #include <iostream>
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "mlir/Conversion/TosaToLinalg/TosaToLinalg.h"
+#include "mlir/Dialect/ControlFlow/Transforms/BufferizableOpInterfaceImpl.h"
 
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
@@ -16,14 +15,17 @@
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 
+
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Arith/Transforms/BufferizableOpInterfaceImpl.h"
+#include "mlir/Dialect/ControlFlow/Transforms/BufferizableOpInterfaceImpl.h"
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
+#include "mlir/Dialect/Bufferization/Transforms/Transforms.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.h"
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Arith/Transforms/BufferizableOpInterfaceImpl.h"
-#include "mlir/Dialect/ControlFlow/Transforms/BufferizableOpInterfaceImpl.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -61,43 +63,38 @@
 #include "circt/Support/LoweringOptionsParser.h"
 #include "circt/Support/Version.h"
 #include "circt/Transforms/Passes.h"
-#include "mlir/Conversion/TosaToLinalg/TosaToLinalg.h"
- 
+
+#include "circt/Conversion/CalyxToFSM.h"
+#include "circt/Conversion/SCFToCalyx.h"
+#include "circt/Dialect/Calyx/CalyxDialect.h"
+#include "circt/Dialect/Calyx/CalyxPasses.h"
+
 #include "IRLevel.hpp"
+#include "Options.hpp"
+#include "CirctFriendlyLoops.hpp"
+#include "HLS.hpp"
+#include "OutputMemrefPassByRef.h"
+#include "logging.hpp"
+
 
 using namespace llvm;
 using namespace mlir;
 using namespace circt;
 
+
 namespace HLSCore {
 
-class HLSTool {
+class HLSToolStatic : public HLSTool {
 public:
-    HLSTool();
-
-    void setOptions(std::unique_ptr<Options>&& _opt);
-    bool synthesise();
+    HLSToolStatic() {
+        logging::runtime_log("Using Statically Scheduled HLS flow");
+    }
 
 protected:
-    std::unique_ptr<Options> opt;
-    DialectRegistry registry;
+    [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
 
-    LogicalResult processBuffer(MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
-
-    LogicalResult processInputSplit(MLIRContext &context, TimingScope &ts, std::unique_ptr<llvm::MemoryBuffer> buffer, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
-
-    LogicalResult processInput(MLIRContext &context, TimingScope &ts, std::unique_ptr<llvm::MemoryBuffer> input, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile);
-
-    // this is where you initialise the HLS flow.
-    [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) = 0;
-
-
-    [[nodiscard]] bool targetAbstractionLayer(IRLevel currentLevel);
-
-    [[nodiscard]] LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
-    
-    std::unique_ptr<Pass> createSimpleCanonicalizerPass();
 };
+
 
 
 }

@@ -25,14 +25,6 @@
 #include "llvm/ADT/TypeSwitch.h"
 
 namespace HLSCore {
-/// Create a simple canonicalizer pass.
-std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
-  mlir::GreedyRewriteConfig config;
-  config.useTopDownTraversal = true;
-  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
-  return mlir::createCanonicalizerPass(config);
-}
-
 
 void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
