@@ -78,10 +78,6 @@ std::ostream& operator<<(std::ostream& os, IRLevel level) {
 
 extern "C" {
 
-// HLSOptions* HLSOptions_create(char* inputMLIR, char* outputFilename) {
-//     return new HLSOptions(inputMLIR, outputFilename);
-// }
-
 struct HLSTool {
    HLSCore::HLSTool* tool;
 };
@@ -147,4 +143,5 @@ void HLSTool_setOptions(HLSTool* tool, HLSConfig* options, char* inputMLIR, char
 bool HLSTool_synthesise(HLSTool* tool) {
     return tool->tool->synthesise();
 }
+
 }
