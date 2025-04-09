@@ -186,14 +186,6 @@ HLSTool::HLSTool() {
   mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
   mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
 
-  // Register MLIR passes.
-  mlir::tosa::registerTosaToLinalgPipelines();
-  mlir::registerCSEPass();
-  mlir::registerSCCPPass();
-  mlir::registerInlinerPass();
-  mlir::registerCanonicalizerPass();
-  mlir::bufferization::registerOneShotBufferizePass();
-
   // Register CIRCT dialects.
   registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
                   sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
