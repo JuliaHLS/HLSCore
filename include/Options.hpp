@@ -11,6 +11,7 @@ namespace HLSCore {
 
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
+enum SchedulingKind { Static, Dynamic };
 
 class Options {
 public:
@@ -25,6 +26,7 @@ public:
         bufferSize = 2;
 
         dynParallelism = Pipelining;
+        schedulingStrategy = Dynamic;
 
         irInputLevel = High;
         irOutputLevel = SV;
@@ -40,6 +42,7 @@ public:
     // public access to simplify C-API interaction
     bool withESI;
     DynamicParallelismKind dynParallelism; 
+    SchedulingKind schedulingStrategy;
 
     std::string bufferingStrategy;
     unsigned bufferSize;
