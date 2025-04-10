@@ -57,7 +57,7 @@ struct HLSConfig {
 // expose a pointer to the HLS tool
 struct HLSTool;
 
-HLSTool* HLSTool_create(SchedulingKind* _schedulingKind);
+HLSTool* HLSTool_create(SchedulingKind _schedulingKind);
 void HLSTool_destroy(HLSTool* _tool);
 
 void HLSTool_setOptions(HLSTool* tool, HLSConfig* options, char* inputMLIR, char* output);
