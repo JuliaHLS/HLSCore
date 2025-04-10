@@ -85,6 +85,7 @@ set(CIRCT_LIBS
         CIRCTFSMTransforms
         CIRCTFSMToSV
         CIRCTTransforms
+        CIRCTAffineToLoopSchedule
         MLIRIR
         MLIRLLVMDialect
         MLIRMemRefDialect

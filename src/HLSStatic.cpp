@@ -1,4 +1,5 @@
 #include "HLSStatic.hpp"
+#include <mlir/Transforms/ViewOpGraph.h>
 
 namespace HLSCore {
 
@@ -9,20 +10,20 @@ LogicalResult HLSToolStatic::runHLSFlow(
 
     HLSCore::logging::runtime_log<std::string>("Running Statically Scheduled HLS Flow");
 
-    bool suppressLaterPasses = false;
-    auto notSuppressed = [&]() { return !suppressLaterPasses; };
-    auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
-                         llvm::function_ref<void()> passAdder) {
-    if (predicate())
-      passAdder();
-    };
+    // bool suppressLaterPasses = false;
+    // auto notSuppressed = [&]() { return !suppressLaterPasses; };
+    // auto addIfNeeded = [&](llvm::function_ref<bool()> predicate,
+    //                      llvm::function_ref<void()> passAdder) {
+    // if (predicate())
+      // passAdder();
+    // };
 
     auto addIRLevel = [&](HLSCore::IRLevel level,
                         llvm::function_ref<void()> passAdder) {
-    addIfNeeded(notSuppressed, [&]() {
+    // addIfNeeded(notSuppressed, [&]() {
       if (targetAbstractionLayer(level))
         passAdder();
-    });
+    // });
     };
 
     // Resolve blocks with multiple predescessors
@@ -31,23 +32,12 @@ LogicalResult HLSToolStatic::runHLSFlow(
 
     // Software lowering
     addIRLevel(PreCompile, [&]() {
-        // // lower tosa to Linalg
-        // pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
+        HLSCore::pipelines::TosaToAffinePipeline(pm);
 
-        // // generate buffers
-        // pm.addPass(mlir::bufferization::createOneShotBufferizePass(
-        //     generateBufferConfig()));
-        // pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
+        // pm.addPass(circt::createAffineToLoopSchedule());
 
-        // // legalise return types
-        // pm.addNestedPass<mlir::func::FuncOp>(
-        //     HLSPasses::createOutputMemrefPassByRef());
-
-        // // lower linalg to affine in a CIRCT friendly manner
-        // pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
-
-        // // lower affine to cf
-        // pm.addPass(mlir::createLowerAffinePass());
+        // lower affine to cf
+        pm.addPass(mlir::createLowerAffinePass());
         // pm.addPass(mlir::createSCFToControlFlowPass());
 
         // // allow merge multiple basic block sources
@@ -58,6 +48,7 @@ LogicalResult HLSToolStatic::runHLSFlow(
     });
 
     addIRLevel(Core, [&]() {
+        // pm.addPass(mlir::createPrintOpGraphPass());
         pm.addPass(circt::createSCFToCalyxPass());
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Core");
     });
@@ -112,7 +103,10 @@ LogicalResult HLSToolStatic::runHLSFlow(
 
     HLSCore::logging::runtime_log<std::string>("Trying to start MLIR Lowering Process");
 
-    if (failed(pm.run(module)))
+    if (failed(pm.run(module))) {
+        HLSCore::logging::runtime_log<std::string>("Failed to synthesise the program...");
+        throw std::runtime_error("ERROR: Failed to synthesise");
+    }
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 

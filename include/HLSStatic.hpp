@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mlir/Transforms/Passes.h"
 
 // MLIR Imports
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
@@ -32,6 +33,7 @@
 #include "circt/Support/LoweringOptionsParser.h"
 #include "circt/Support/Version.h"
 #include "circt/Transforms/Passes.h"
+#include "circt/Conversion/AffineToLoopSchedule.h"
 
 // HLSCore Imports
 #include "IRLevel.hpp"
@@ -60,8 +62,8 @@ public:
         HLSCore::pipelines::registerPreCompileDialects(registry);
 
         // register CIRCT dialects
-        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-            sv::SVDialect, calyx::CalyxDialect>();
+        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect, 
+            loopschedule::LoopScheduleDialect, sv::SVDialect, calyx::CalyxDialect>();
     }
 
 protected:
