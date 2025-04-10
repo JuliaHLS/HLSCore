@@ -37,6 +37,7 @@ add_executable(HLSCore
     src/OutputMemrefPassByRef.cpp
     src/CirctFriendlyLoops.cpp
     src/HLSStatic.cpp
+    src/LoweringPipelines.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -48,6 +49,7 @@ add_library(HLSCore_C_API SHARED
     src/OutputMemrefPassByRef.cpp
     src/CirctFriendlyLoops.cpp
     src/HLSStatic.cpp
+    src/LoweringPipelines.cpp
 )
 
 # Update compile flags for LLVM

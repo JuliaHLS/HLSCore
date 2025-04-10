@@ -70,6 +70,7 @@
 #include "HLS.hpp"
 #include "OutputMemrefPassByRef.h"
 #include "logging.hpp"
+#include "LoweringPipelines.hpp"
 
 
 using namespace llvm;
