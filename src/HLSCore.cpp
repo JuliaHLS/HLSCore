@@ -138,7 +138,7 @@ int hls_driver(std::unique_ptr<Options> options) {
 
     std::unique_ptr<HLSTool> hls;
 
-    switch(options->schedulingStrategy) {
+    switch(schedulingStrategyOpt) {
         case HLSCore::SchedulingKind::Static: {
             hls = std::make_unique<HLSToolStatic>(); 
             break;
@@ -171,8 +171,10 @@ int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
 
+    // initialise Options
     std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
 
+    // set objects (based off of the CLI arguments)
     opt->irInputLevel = inputLevelOpt;
     opt->irOutputLevel = outputLevelOpt;
     opt->withESI = withESIOpt;
@@ -184,15 +186,9 @@ int main(int argc, char **argv) {
 
     opt->bufferSize = bufferSizeOpt;
     opt->bufferingStrategy = bufferingStrategyOpt;
-
-    opt->schedulingStrategy = schedulingStrategyOpt;
     
-
     if (split_verilog_flag && opt->irOutputLevel != SV)
         throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
-
-
-
 
     // start driver program
     return hls_driver(std::move(opt));

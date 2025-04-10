@@ -26,7 +26,6 @@ public:
         bufferSize = 2;
 
         dynParallelism = Pipelining;
-        schedulingStrategy = Dynamic;
 
         irInputLevel = High;
         irOutputLevel = SV;
@@ -42,7 +41,6 @@ public:
     // public access to simplify C-API interaction
     bool withESI;
     DynamicParallelismKind dynParallelism; 
-    SchedulingKind schedulingStrategy;
 
     std::string bufferingStrategy;
     unsigned bufferSize;
