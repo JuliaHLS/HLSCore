@@ -1,8 +1,4 @@
-//===----------------------------------------------------------------------===//
-//
 // This file implements a cli for the HLS tool to realise HLS (High Level Synthesis)
-//
-//===----------------------------------------------------------------------===//
 
 #include "IRLevel.hpp"
 #include "HLSDynamic.hpp"

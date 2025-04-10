@@ -1,10 +1,8 @@
 #pragma once
 
-
 #include "HLSDynamic.hpp"
 #include "HLSStatic.hpp"
 #include "Options.hpp"
-
 
 extern "C" {
 

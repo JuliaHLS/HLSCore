@@ -68,6 +68,12 @@
 #include "circt/Conversion/SCFToCalyx.h"
 #include "circt/Dialect/Calyx/CalyxDialect.h"
 #include "circt/Dialect/Calyx/CalyxPasses.h"
+#include <circt/Conversion/CalyxToFSM.h>
+#include <circt/Conversion/FSMToSV.h>
+#include <circt/Conversion/SCFToCalyx.h>
+#include <circt/Conversion/SeqToSV.h>
+
+
 
 #include "IRLevel.hpp"
 #include "Options.hpp"

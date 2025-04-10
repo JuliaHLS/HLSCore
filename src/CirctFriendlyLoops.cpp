@@ -1,10 +1,6 @@
-//===- Loops.cpp - conversion from Linalg named and generic ops to loops --===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
+// A lot of this file comes from the MLIR source-code, as we need
+// to have access to the anonymous namespaces to correctly modify
+// the Linalg pass
 
 #include "mlir/Dialect/Linalg/Passes.h"
 
