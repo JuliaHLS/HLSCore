@@ -1,11 +1,8 @@
-//===----------------------------------------------------------------------===//
-//
 // This file implements a cli for the HLS tool to realise HLS (High Level Synthesis)
-//
-//===----------------------------------------------------------------------===//
 
 #include "IRLevel.hpp"
 #include "HLSDynamic.hpp"
+#include "HLSStatic.hpp"
 #include "Options.hpp"
 #include "logging.hpp"
 
@@ -108,11 +105,24 @@ static cl::opt<int> bufferSizeOpt(
     cl::init(2)
 );
 
+
 static cl::opt<std::string> bufferingStrategyOpt(
-    "buff-strategy",
+    "buff_strategy",
     cl::desc("Buffering Strategy to apply"),
     cl::value_desc("Default: all"),
     cl::init("all")
+);
+
+
+static cl::opt<HLSCore::SchedulingKind> schedulingStrategyOpt(
+        "scheduling_strategy",
+        cl::desc("Scheduling Strategy to apply"),
+        cl::values(
+            clEnumValN(HLSCore::SchedulingKind::Static, "static", "Statically Scheduled HLS Flow"),
+            clEnumValN(HLSCore::SchedulingKind::Dynamic, "dynamic", "Dynamically Scheduled HLS Flow")
+        ),
+        cl::value_desc("Default: dynamic"),
+        cl::init(HLSCore::SchedulingKind::Dynamic)
 );
 
 
@@ -122,15 +132,30 @@ static cl::opt<std::string> bufferingStrategyOpt(
 int hls_driver(std::unique_ptr<Options> options) {
     logging::runtime_log<std::string>("Starting HLS Tool");
 
-    HLSToolDynamic hls;
+    std::unique_ptr<HLSTool> hls;
+
+    switch(schedulingStrategyOpt) {
+        case HLSCore::SchedulingKind::Static: {
+            hls = std::make_unique<HLSToolStatic>(); 
+            break;
+        }
+        case HLSCore::SchedulingKind::Dynamic: {
+            hls = std::make_unique<HLSToolDynamic>(); 
+            break;
+        }
+        default: {
+            logging::runtime_log<std::string>("Got unregistered unrecognised scheduling strategy");
+            throw std::runtime_error("Got unrecognised scheduling strategy");
+        }
+    }
 
     logging::runtime_log<std::string>("Instantiated HLS Tool");
 
-    hls.setOptions(std::move(options));
+    hls->setOptions(std::move(options));
     
     logging::runtime_log<std::string>("Set up HLS Tool, starting synthesis");
 
-    auto result = hls.synthesise();
+    auto result = hls->synthesise();
 
     logging::runtime_log<std::string>("Successfully Synthesised Program");
 
@@ -142,8 +167,10 @@ int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
 
+    // initialise Options
     std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
 
+    // set objects (based off of the CLI arguments)
     opt->irInputLevel = inputLevelOpt;
     opt->irOutputLevel = outputLevelOpt;
     opt->withESI = withESIOpt;
@@ -156,12 +183,8 @@ int main(int argc, char **argv) {
     opt->bufferSize = bufferSizeOpt;
     opt->bufferingStrategy = bufferingStrategyOpt;
     
-
     if (split_verilog_flag && opt->irOutputLevel != SV)
         throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
-
-
-
 
     // start driver program
     return hls_driver(std::move(opt));

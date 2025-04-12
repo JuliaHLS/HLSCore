@@ -5,6 +5,15 @@
 
 namespace HLSCore {
 
+/// Create a simple canonicalizer pass.
+std::unique_ptr<Pass> HLSTool::createSimpleCanonicalizerPass() {
+  mlir::GreedyRewriteConfig config;
+  config.useTopDownTraversal = true;
+  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
+  return mlir::createCanonicalizerPass(config);
+}
+
+
 /// Process a single buffer of the input.
 LogicalResult HLSTool::processBuffer(
     MLIRContext &context, TimingScope &ts, llvm::SourceMgr &sourceMgr, const std::string& outputFilename,
@@ -163,33 +172,6 @@ HLSTool::HLSTool() {
   registerPassManagerCLOptions();
   registerDefaultTimingManagerCLOptions();
   registerAsmPrinterCLOptions();
-
-  // register MLIR dialects.
-  registry.insert<mlir::affine::AffineDialect>();
-  registry.insert<mlir::memref::MemRefDialect>();
-  registry.insert<mlir::func::FuncDialect>();
-  registry.insert<mlir::arith::ArithDialect>();
-  registry.insert<mlir::cf::ControlFlowDialect>();
-  registry.insert<mlir::scf::SCFDialect>();
-  registry.insert<mlir::tosa::TosaDialect>();
-  registry.insert<mlir::tensor::TensorDialect>();
-  registry.insert<mlir::linalg::LinalgDialect>();
-  registry.insert<mlir::bufferization::BufferizationDialect>();
-
-  /* registerAllDialects(registry); */
-  mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
-  mlir::linalg::registerAllDialectInterfaceImplementations(registry);
-
-  bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
-      registry);
-
-  mlir::arith::registerBufferizableOpInterfaceExternalModels(registry);
-  mlir::cf::registerBufferizableOpInterfaceExternalModels(registry);
-
-  // Register CIRCT dialects.
-  registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-                  sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect,
-                  calyx::CalyxDialect>();
 
 }
 

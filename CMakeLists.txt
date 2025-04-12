@@ -36,6 +36,8 @@ add_executable(HLSCore
     src/HLSCore.cpp
     src/OutputMemrefPassByRef.cpp
     src/CirctFriendlyLoops.cpp
+    src/HLSStatic.cpp
+    src/LoweringPipelines.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -46,6 +48,8 @@ add_library(HLSCore_C_API SHARED
     src/HLS_C_API.cpp
     src/OutputMemrefPassByRef.cpp
     src/CirctFriendlyLoops.cpp
+    src/HLSStatic.cpp
+    src/LoweringPipelines.cpp
 )
 
 # Update compile flags for LLVM
@@ -81,6 +85,7 @@ set(CIRCT_LIBS
         CIRCTFSMTransforms
         CIRCTFSMToSV
         CIRCTTransforms
+        CIRCTAffineToLoopSchedule
         MLIRIR
         MLIRLLVMDialect
         MLIRMemRefDialect

@@ -1,38 +1,7 @@
 #include "HLSDynamic.hpp"
-#include <mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h>
 
-// PASSES:
-
-#include "mlir/Dialect/Linalg/Passes.h"
-
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Arith/Utils/Utils.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Linalg/IR/Linalg.h"
-#include "mlir/Dialect/Linalg/Passes.h.inc"
-#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
-#include "mlir/Dialect/Linalg/Utils/Utils.h"
-#include "mlir/Dialect/SCF/Transforms/Transforms.h"
-#include "mlir/Dialect/SCF/Utils/AffineCanonicalizationUtils.h"
-#include "mlir/IR/AffineExpr.h"
-#include "mlir/IR/AffineMap.h"
-#include "mlir/IR/IRMapping.h"
-#include "mlir/Support/LLVM.h"
-#include "mlir/Transforms/DialectConversion.h"
-#include "mlir/Transforms/FoldUtils.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/ADT/TypeSwitch.h"
 
 namespace HLSCore {
-/// Create a simple canonicalizer pass.
-std::unique_ptr<Pass> createSimpleCanonicalizerPass() {
-  mlir::GreedyRewriteConfig config;
-  config.useTopDownTraversal = true;
-  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Disabled;
-  return mlir::createCanonicalizerPass(config);
-}
-
 
 void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
   // Memref legalization.
@@ -92,15 +61,6 @@ void HLSToolDynamic::loadHWLoweringPipeline(OpPassManager &pm) {
   modulePM.addPass(sv::createPrettifyVerilogPass());
 }
 
-[[nodiscard]] mlir::bufferization::OneShotBufferizePassOptions
-generateBufferConfig() {
-  auto buff_opts = mlir::bufferization::OneShotBufferizePassOptions();
-  buff_opts.functionBoundaryTypeConversion =
-      mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
-  buff_opts.bufferizeFunctionBoundaries = true;
-
-  return buff_opts;
-}
 
 LogicalResult HLSToolDynamic::runHLSFlow(
     PassManager &pm, ModuleOp module, const std::string &outputFilename,
@@ -128,20 +88,7 @@ LogicalResult HLSToolDynamic::runHLSFlow(
 
     // Software lowering
     addIRLevel(PreCompile, [&]() {
-        // lower tosa to Linalg
-        pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
-
-        // generate buffers
-        pm.addPass(mlir::bufferization::createOneShotBufferizePass(
-            generateBufferConfig()));
-        pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
-
-        // legalise return types
-        pm.addNestedPass<mlir::func::FuncOp>(
-            HLSPasses::createOutputMemrefPassByRef());
-
-        // lower linalg to affine in a CIRCT friendly manner
-        pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
+        HLSCore::pipelines::TosaToAffinePipeline(pm);
 
         // lower affine to cf
         pm.addPass(mlir::createLowerAffinePass());

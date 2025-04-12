@@ -82,10 +82,18 @@ struct HLSTool {
    HLSCore::HLSTool* tool;
 };
 
-HLSTool* HLSTool_create() {
+HLSTool* HLSTool_create(SchedulingKind _schedulingKind) {
     HLSTool* c_obj = new HLSTool();
 
-    c_obj->tool = new HLSCore::HLSToolDynamic();
+    if (_schedulingKind == SchedulingKind::Static) {
+        HLSCore::logging::runtime_log<std::string>("Static Scheduling");
+        c_obj->tool = new HLSCore::HLSToolStatic();
+    } else if (_schedulingKind == SchedulingKind::Dynamic) {
+        HLSCore::logging::runtime_log<std::string>("Dynamic Scheduling");
+        c_obj->tool = new HLSCore::HLSToolDynamic();
+    } else {
+        HLSCore::logging::runtime_log<std::string>("ERROR: incorrect scheduling type");
+    }
 
     return c_obj;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iostream>
+#include "mlir/Transforms/Passes.h"
 
 // MLIR Imports
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
@@ -12,12 +12,19 @@
 #include "mlir/Conversion/TosaToLinalg/TosaToLinalg.h"
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 
+// calyx imports
+#include "circt/Conversion/CalyxToFSM.h"
+#include "circt/Conversion/SCFToCalyx.h"
+#include "circt/Dialect/Calyx/CalyxDialect.h"
+#include "circt/Dialect/Calyx/CalyxPasses.h"
+#include <circt/Conversion/CalyxToFSM.h>
+#include <circt/Conversion/FSMToSV.h>
+#include <circt/Conversion/SCFToCalyx.h>
+#include <circt/Conversion/SeqToSV.h>
+
 // CIRCT Imports
 #include "circt/Conversion/ExportVerilog.h"
 #include "circt/Conversion/Passes.h"
-#include "circt/Dialect/DC/DCPasses.h"
-#include "circt/Dialect/ESI/ESIDialect.h"
-#include "circt/Dialect/ESI/ESIPasses.h"
 #include "circt/Dialect/SV/SVDialect.h"
 #include "circt/Dialect/SV/SVPasses.h"
 #include "circt/Dialect/Seq/SeqDialect.h"
@@ -26,6 +33,7 @@
 #include "circt/Support/LoweringOptionsParser.h"
 #include "circt/Support/Version.h"
 #include "circt/Transforms/Passes.h"
+#include "circt/Conversion/AffineToLoopSchedule.h"
 
 // HLSCore Imports
 #include "IRLevel.hpp"
@@ -44,29 +52,23 @@ using namespace circt;
 
 namespace HLSCore {
 
-class HLSToolDynamic : public HLSTool {
+class HLSToolStatic : public HLSTool {
 public:
-    HLSToolDynamic() {
-        logging::runtime_log("Using Dynamically Scheduled HLS flow");
+    HLSToolStatic() {
+        logging::runtime_log("Using Statically Scheduled HLS flow");
 
         // register high-level dialects
         HLSCore::pipelines::registerCoreDialects(registry);
         HLSCore::pipelines::registerPreCompileDialects(registry);
 
-        // register CIRCT dialects.
-        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect,
-            sv::SVDialect, handshake::HandshakeDialect, esi::ESIDialect>();
+        // register CIRCT dialects
+        registry.insert<hw::HWDialect, comb::CombDialect, seq::SeqDialect, 
+            loopschedule::LoopScheduleDialect, sv::SVDialect, calyx::CalyxDialect>();
     }
 
 protected:
     [[nodiscard]] virtual LogicalResult runHLSFlow(PassManager &pm, ModuleOp module, const std::string &outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>> &outputFile) override final;
 
-
-private:
-    void loadDHLSPipeline(OpPassManager &pm);
-    void loadHandshakeTransformsPipeline(OpPassManager &pm);
-    void loadESILoweringPipeline(OpPassManager &pm);
-    void loadHWLoweringPipeline(OpPassManager &pm);
 };
 
 

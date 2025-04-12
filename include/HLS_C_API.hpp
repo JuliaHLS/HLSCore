@@ -1,9 +1,8 @@
 #pragma once
 
-
 #include "HLSDynamic.hpp"
+#include "HLSStatic.hpp"
 #include "Options.hpp"
-
 
 extern "C" {
 
@@ -11,6 +10,7 @@ extern "C" {
 
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
+enum SchedulingKind { Static, Dynamic };
 
 enum IRLevel {
   // high-level dialects (above "standard")
@@ -55,7 +55,7 @@ struct HLSConfig {
 // expose a pointer to the HLS tool
 struct HLSTool;
 
-HLSTool* HLSTool_create();
+HLSTool* HLSTool_create(SchedulingKind _schedulingKind);
 void HLSTool_destroy(HLSTool* _tool);
 
 void HLSTool_setOptions(HLSTool* tool, HLSConfig* options, char* inputMLIR, char* output);

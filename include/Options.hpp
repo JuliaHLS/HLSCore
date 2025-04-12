@@ -11,6 +11,7 @@ namespace HLSCore {
 
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
+enum SchedulingKind { Static, Dynamic };
 
 class Options {
 public:
