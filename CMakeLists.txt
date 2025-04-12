@@ -38,6 +38,7 @@ add_executable(HLSCore
     src/CirctFriendlyLoops.cpp
     src/HLSStatic.cpp
     src/LoweringPipelines.cpp
+    src/CompileRepeatPass.cpp
 )
 
 add_library(HLSCore_C_API SHARED
@@ -50,6 +51,7 @@ add_library(HLSCore_C_API SHARED
     src/CirctFriendlyLoops.cpp
     src/HLSStatic.cpp
     src/LoweringPipelines.cpp
+    src/CompileRepeatPass.cpp
 )
 
 # Update compile flags for LLVM

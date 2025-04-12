@@ -91,15 +91,15 @@ LogicalResult HLSToolDynamic::runHLSFlow(
         HLSCore::pipelines::TosaToAffinePipeline(pm);
 
         // lower affine to cf
-        pm.addPass(mlir::createLowerAffinePass());
-        pm.addPass(mlir::createSCFToControlFlowPass());
+        // pm.addPass(mlir::createLowerAffinePass());
+        // pm.addPass(mlir::createSCFToControlFlowPass());
 
-        // allow merge multiple basic block sources
-        pm.addPass(circt::createInsertMergeBlocksPass());
+        // // allow merge multiple basic block sources
+        // pm.addPass(circt::createInsertMergeBlocksPass());
 
-        // log
-        HLSCore::logging::runtime_log<std::string>(
-            "Successfully added passes to lower to Precompile");
+        // // log
+        // HLSCore::logging::runtime_log<std::string>(
+        //     "Successfully added passes to lower to Precompile");
     });
 
     addIRLevel(Core, [&]() {

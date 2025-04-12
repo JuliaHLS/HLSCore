@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CompileRepeat.hpp"
+
 #include "Options.hpp"
 #include <memory>
 

@@ -50,6 +50,7 @@ LogicalResult HLSToolStatic::runHLSFlow(
     addIRLevel(Core, [&]() {
         // pm.addPass(mlir::createPrintOpGraphPass());
         pm.addPass(circt::createSCFToCalyxPass());
+        // pm.addPass(createCompileRepeatPass());
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Core");
     });
 
