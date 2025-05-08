@@ -1,12 +1,18 @@
 #include "OutputMemrefPassByRef.h"
+#include "logging.hpp"
 
 void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
     func = getOperation();
     funcType = func.getFunctionType();
     mlir::Block &entryBlock = func.front();
 
+    HLSCore::logging::runtime_log<std::string>("Starting Pass");
+    
+
     // modify the function if it is returning a memref
     if (returnIsMemRef()) {
+        HLSCore::logging::runtime_log<std::string>("Output is memref");
+
         // instantiate rewriter and OpBuilder
         mlir::IRRewriter rewriter(&getContext());
         mlir::OpBuilder builder(func.getContext());
@@ -22,6 +28,7 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
 
         // extract old ssa value
         auto oldSSAValue = returnOp.getOperand(0);
+        HLSCore::logging::runtime_log<mlir::Value>(returnOp.getOperand(0));
         auto memrefType = mlir::dyn_cast<mlir::MemRefType>(oldSSAValue.getType());
         auto functionType = func.getFunctionType();
 
@@ -33,7 +40,6 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
                                            builder.getI1Type());
         func.setType(newFunctionType);
 
-
         // rewrite mlir block
         mlir::Block &entryBlock = func.front();
         entryBlock.addArgument(oldSSAValue.getType(), func.getLoc());
@@ -43,7 +49,11 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
 
         // remove old SSA values
         oldSSAValue.replaceAllUsesWith(newArg);
-        oldSSAValue.getDefiningOp()->erase();
+
+        if(!oldSSAValue.isa<mlir::BlockArgument>()) {
+            oldSSAValue.getDefiningOp()->erase();
+        }
+        // HLSCore::logging::runtime_log<mlir::Operation>(oldSSAValue.getDefiningOp());
 
         // insert new return op (boolean)
         rewriter.setInsertionPoint(returnOp);

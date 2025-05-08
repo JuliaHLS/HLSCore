@@ -57,8 +57,6 @@ void TosaToAffinePipeline(mlir::PassManager &pm) {
 
     // lower linalg to affine in a CIRCT friendly manner
     pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
-
-
 }
 
 }
