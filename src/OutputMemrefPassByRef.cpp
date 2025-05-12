@@ -47,13 +47,8 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
         // replace with new arg
         mlir::BlockArgument newArg = entryBlock.getArguments().back();
 
-        // remove old SSA values
+        // remove old SSA values by traversing over all blocks with a lambda function
         oldSSAValue.replaceAllUsesWith(newArg);
-
-        if(!oldSSAValue.isa<mlir::BlockArgument>()) {
-            oldSSAValue.getDefiningOp()->erase();
-        }
-        // HLSCore::logging::runtime_log<mlir::Operation>(oldSSAValue.getDefiningOp());
 
         // insert new return op (boolean)
         rewriter.setInsertionPoint(returnOp);
@@ -74,7 +69,7 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
         const mlir::Type retType = funcType.getResult(0);
 
         // compare and return result type
-        return retType.isa<mlir::MemRefType>();
+        return mlir::isa<mlir::MemRefType>(retType);
 
     } else if (numResults > 1) {
         // for each result, check if there is a return type to consider
@@ -84,7 +79,7 @@ void HLSPasses::OutputMemrefPassByRef::runOnOperation() {
             const mlir::Type retType = funcType.getResult(i);
 
             // print warning if MemRefType warning
-            if (retType.isa<mlir::MemRefType>()) {
+            if (mlir::isa<mlir::MemRefType>(retType)) {
                 // print warning
                 
                 llvm::outs() << "Warning: MemRefType found as return type. Not sanitised by OutputMemrefPassByRef. Please implement custom pass \n";
