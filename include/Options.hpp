@@ -6,12 +6,54 @@
 #include "llvm/Support/raw_ostream.h"
 #include <string>
 #include "mlir/Support/FileUtilities.h"
+#include "logging.hpp"
+
+#include <unordered_map>
+#include <vector>
 
 namespace HLSCore {
 
 enum DynamicParallelismKind { None, Locking, Pipelining };
 enum OutputFormatKind { OutputIR, OutputVerilog, OutputSplitVerilog };
 enum SchedulingKind { Static, Dynamic };
+
+class CustomIP {
+public:
+    CustomIP(std::vector<std::vector<std::string>> input) {
+        if (input.size() > 0) {
+            for (const auto& string_entry : input) {
+                logging::runtime_log("Added new CustomIP entry");
+
+                std::string name = string_entry.front();
+                std::string mlir_def = string_entry.at(2);
+
+                logging::runtime_log<std::string>(std::move(name));
+                logging::runtime_log<std::string>(std::move(mlir_def));
+
+                std::vector<std::string> p_names;
+
+                for (int i = 2; i < string_entry.size(); i++){
+                    p_names.push_back(string_entry.at(i));
+                    // logging::runtime_log(p_names);
+                }
+
+                // fill input
+                ip_names.push_back(name);
+                mlir_definitions[name] = mlir_def;
+                port_names[name] = p_names;
+            }
+        }
+    }
+
+    CustomIP(){
+        
+    };
+
+private:
+    std::vector<std::string> ip_names;
+    std::unordered_map<std::string, std::string> mlir_definitions;
+    std::unordered_map<std::string, std::vector<std::string>> port_names;
+};
 
 class Options {
 public:
@@ -36,6 +78,10 @@ public:
         withDC = false;
         verifyPasses = true;
         verifyDiagnostics = false;
+
+        optimiseInput = true;
+
+        custom_ip = CustomIP();
     }
 
     // public access to simplify C-API interaction
@@ -54,6 +100,9 @@ public:
     bool withDC;
     bool verifyPasses;
     bool verifyDiagnostics;
+    bool optimiseInput;
+
+    CustomIP custom_ip;
 
 protected:
     std::string outputFilename;
@@ -73,6 +122,16 @@ public:
         // write to console if name not entered
         if (_outputFilename.size() == 0) outputFilename = "-";
         else outputFilename = _outputFilename;
+    }
+
+    OptionsString(const std::string& _inputMlir, const std::string& _outputFilename, std::vector<std::vector<std::string>> _custom_ip) :
+        inputMlir (_inputMlir)
+    {
+        // write to console if name not entered
+        if (_outputFilename.size() == 0) outputFilename = "-";
+        else outputFilename = _outputFilename;
+
+        custom_ip = CustomIP(_custom_ip);
     }
 
     // copy ctr (ptr) implemented as a deep copy
@@ -126,6 +185,17 @@ public:
         if (_outputFilename.size() == 0) outputFilename = "-";
         else outputFilename = _outputFilename;
     }   
+
+    OptionsFile(const std::string& _inputFilename, const std::string& _outputFilename, std::vector<std::vector<std::string>> _custom_ip) :
+        inputFilename (_inputFilename)
+    {
+        // write to console if name not entered
+        if (_outputFilename.size() == 0) outputFilename = "-";
+        else outputFilename = _outputFilename;
+
+        custom_ip = CustomIP(_custom_ip);
+    }   
+
 };
 
 }

@@ -1,18 +1,30 @@
 #include "HLSDynamic.hpp"
 
+#include "BindExternalIP.h"
+#include "FloatToInt.h"
+
 
 namespace HLSCore {
 
 void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
+
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
+
+    // legalise return types
+    pm.addNestedPass<mlir::func::FuncOp>(
+    HLSPasses::createOutputMemrefPassByRef());
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
 
-  pm.addPass(mlir::createSCFToControlFlowPass());
-  pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
-  // DHLS conversion
+  pm.addPass(mlir::createSCFToControlFlowPass());
+  // pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
+
+  pm.nest<circt::handshake::FuncOp>().addPass(
+      circt::handshake::createHandshakeSplitMergesPass());
+  // // DHLS conversion
+  // pm.nest<func::FuncOp>().addPass(createSimpleCanonicalizerPass());
   pm.addPass(
       circt::createCFToHandshakePass(false, opt->dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(opt->withESI));
@@ -90,12 +102,24 @@ LogicalResult HLSToolDynamic::runHLSFlow(
     addIRLevel(PreCompile, [&]() {
         HLSCore::pipelines::TosaToAffinePipeline(pm);
 
+    pm.addNestedPass<mlir::func::FuncOp>(
+    HLSPasses::createOutputMemrefPassByRef());
+
+    if(opt->optimiseInput){
+      pm.nest<func::FuncOp>().addPass(createNormalCanonicalizerPass());
+    }
+
+
         // lower affine to cf
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
 
         // allow merge multiple basic block sources
         pm.addPass(circt::createInsertMergeBlocksPass());
+
+
+        pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createBindExternalIP());
+        pm.addPass(HLSPasses::createFloatToInt());
 
         // log
         HLSCore::logging::runtime_log<std::string>(
@@ -163,7 +187,10 @@ LogicalResult HLSToolDynamic::runHLSFlow(
     HLSCore::logging::runtime_log<std::string>(
       "Trying to start MLIR Lowering Process");
 
-    if (failed(pm.run(module)))
+    if (failed(pm.run(module))) {
+        HLSCore::logging::runtime_log<std::string>("Failed, dumping IR:");
+        module.dump();
+    }
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 

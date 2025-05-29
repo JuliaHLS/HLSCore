@@ -59,6 +59,7 @@ protected:
     [[nodiscard]] LogicalResult writeSingleFileOutput(const mlir::ModuleOp& module, const std::string& outputFilename, std::optional<std::unique_ptr<llvm::ToolOutputFile>>& outputFile);
     
     std::unique_ptr<Pass> createSimpleCanonicalizerPass();
+    std::unique_ptr<Pass> createNormalCanonicalizerPass();
 };
 
 

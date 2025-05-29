@@ -13,6 +13,13 @@ std::unique_ptr<Pass> HLSTool::createSimpleCanonicalizerPass() {
   return mlir::createCanonicalizerPass(config);
 }
 
+std::unique_ptr<Pass> HLSTool::createNormalCanonicalizerPass() {
+  mlir::GreedyRewriteConfig config;
+  config.useTopDownTraversal = true;
+  config.enableRegionSimplification = mlir::GreedySimplifyRegionLevel::Normal;
+  return mlir::createCanonicalizerPass(config);
+}
+
 
 /// Process a single buffer of the input.
 LogicalResult HLSTool::processBuffer(
