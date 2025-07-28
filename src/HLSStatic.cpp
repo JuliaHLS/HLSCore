@@ -37,11 +37,14 @@ LogicalResult HLSToolStatic::runHLSFlow(
         // pm.addPass(circt::createAffineToLoopSchedule());
 
         // lower affine to cf
-        pm.addPass(mlir::createLowerAffinePass());
+        // pm.addPass(mlir::createLowerAffinePass());
         // pm.addPass(mlir::createSCFToControlFlowPass());
 
         // // allow merge multiple basic block sources
-        // pm.addPass(circt::createInsertMergeBlocksPass());
+            
+        // pm.addPass(mlir::createLiftControlFlowToSCFPass());
+
+        pm.addPass(circt::createFlattenMemRefPass());
 
         // log
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to Precompile");
@@ -69,6 +72,9 @@ LogicalResult HLSToolStatic::runHLSFlow(
         // eliminate calyx's group abstraction
         pm.addNestedPass<calyx::ComponentOp>(circt::createRemoveGroupsFromFSMPass());
         pm.addPass(createSimpleCanonicalizerPass());
+        pm.addNestedPass<calyx::ComponentOp>(circt::calyx::createClkInsertionPass());
+        pm.addNestedPass<calyx::ComponentOp>(circt::calyx::createGoInsertionPass());
+        pm.addNestedPass<calyx::ComponentOp>(circt::calyx::createResetInsertionPass());
 
         HLSCore::logging::runtime_log<std::string>("Successfully added passes to lower to PostCompile");
     });

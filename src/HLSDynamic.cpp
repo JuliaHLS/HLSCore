@@ -1,18 +1,40 @@
 #include "HLSDynamic.hpp"
 
+#include "BindExternalIP.h"
+#include "FloatToInt.h"
+#include "DeleteUnusedMemory.h"
+#include "circt/Support/LoweringOptions.h"
+
 
 namespace HLSCore {
 
 void HLSToolDynamic::loadDHLSPipeline(OpPassManager &pm) {
+
   // Memref legalization.
   pm.addPass(circt::createFlattenMemRefPass());
+
+    // legalise return types
+    pm.addNestedPass<mlir::func::FuncOp>(
+        HLSPasses::createOutputMemrefPassByRef());
+
+
+    HLSCore::logging::runtime_log<std::string>("Optimise Input is set to:");
+    HLSCore::logging::runtime_log<bool>(std::move(opt->optimiseInput));
+
+    if(opt->optimiseInput){
+        HLSCore::logging::runtime_log<std::string>("Running Memory Optimisations");
+        pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createDeleteUnusedMemory());
+    }
+
   pm.nest<func::FuncOp>().addPass(
       circt::handshake::createHandshakeLegalizeMemrefsPass());
 
-  pm.addPass(mlir::createSCFToControlFlowPass());
-  pm.nest<handshake::FuncOp>().addPass(createSimpleCanonicalizerPass());
 
-  // DHLS conversion
+    // allow merge multiple basic block sources
+    pm.addPass(circt::createInsertMergeBlocksPass());
+
+  pm.addPass(mlir::createSCFToControlFlowPass());
+
   pm.addPass(
       circt::createCFToHandshakePass(false, opt->dynParallelism != Pipelining));
   pm.addPass(circt::handshake::createHandshakeLowerExtmemToHWPass(opt->withESI));
@@ -90,12 +112,21 @@ LogicalResult HLSToolDynamic::runHLSFlow(
     addIRLevel(PreCompile, [&]() {
         HLSCore::pipelines::TosaToAffinePipeline(pm);
 
+        pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createOutputMemrefPassByRef());
+
+        if(opt->optimiseInput){
+          pm.nest<func::FuncOp>().addPass(createNormalCanonicalizerPass());
+        }
+
+
         // lower affine to cf
         pm.addPass(mlir::createLowerAffinePass());
         pm.addPass(mlir::createSCFToControlFlowPass());
 
-        // allow merge multiple basic block sources
-        pm.addPass(circt::createInsertMergeBlocksPass());
+
+
+        // pm.addNestedPass<mlir::func::FuncOp>(HLSPasses::createBindExternalIP());
+        // pm.addPass(HLSPasses::createFloatToInt());
 
         // log
         HLSCore::logging::runtime_log<std::string>(
@@ -133,6 +164,7 @@ LogicalResult HLSToolDynamic::runHLSFlow(
       pm.addPass(circt::dc::createDCMaterializeForksSinksPass());
       pm.addPass(createSimpleCanonicalizerPass());
     } else {
+      // pm.addPass(circt::createMapArithToCombPass());
       pm.addPass(circt::createHandshakeToHWPass());
     }
     pm.addPass(createSimpleCanonicalizerPass());
@@ -144,6 +176,9 @@ LogicalResult HLSToolDynamic::runHLSFlow(
 
     addIRLevel(SV, [&]() {
     loadHWLoweringPipeline(pm);
+
+
+
 
     // handle output
     if (opt->traceIVerilog)
@@ -160,10 +195,34 @@ LogicalResult HLSToolDynamic::runHLSFlow(
     });
 
 
+    // auto loweringOptions = circt::LoweringOptions();
+
+    // switch(opt->synthTarget) {
+    // case SynthesisTarget::GENERIC: {
+    //     break;
+    // }
+    // case SynthesisTarget::QUARTUS: {
+    //     std::cout << "Running Quartus configuration" << std::endl;
+    //     loweringOptions.emitWireInPorts = true; 
+    //     break;
+    // }
+    // default: {
+    //     logging::runtime_log("Invalid SynthesisTarget used, reverting to default settings...");
+    //     break;
+    // }
+
+    // }
+
+
+    // loweringOptions.setAsAttribute(module);
+
     HLSCore::logging::runtime_log<std::string>(
       "Trying to start MLIR Lowering Process");
 
-    if (failed(pm.run(module)))
+    if (failed(pm.run(module))) {
+        HLSCore::logging::runtime_log<std::string>("Failed, dumping IR:");
+        module.dump();
+    }
 
     HLSCore::logging::runtime_log<std::string>("Successfully lowered MLIR");
 

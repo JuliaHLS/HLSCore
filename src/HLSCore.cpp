@@ -11,9 +11,13 @@
 #include <string>
 #include "llvm/Support/CommandLine.h"
 
+#include "llvm/Support/CommandLine.h"
+#include "llvm/ADT/SmallVector.h"
+#include <string>
+#include <vector>
+
 using namespace HLSCore;
 using namespace llvm;
-
 
 // Command Line Options
 static cl::opt<IRLevel> inputLevelOpt(
@@ -28,6 +32,12 @@ static cl::opt<IRLevel> inputLevelOpt(
         clEnumValN(IRLevel::SV, "SV", "SV level Input")
     ),
     cl::init(IRLevel::High)
+);
+
+static cl::opt<bool> inputOptimiseInput(
+    "optimInput",
+    cl::desc("Toggle input MLIR optimisation:"),
+    cl::init(true)
 );
 
 
@@ -125,6 +135,24 @@ static cl::opt<HLSCore::SchedulingKind> schedulingStrategyOpt(
         cl::init(HLSCore::SchedulingKind::Dynamic)
 );
 
+static llvm::cl::list<std::string> externalIPDeclaraction(
+        "custom_ip",
+        cl::desc("Custom IP to link, format"),
+        cl::ZeroOrMore,
+        cl::CommaSeparated,
+        cl::value_desc("Default: empty")
+);
+
+static cl::opt<HLSCore::SynthesisTarget> synthTargetOpt(
+        "synth_target",
+        cl::desc("Synthesis Target"),
+        cl::values(
+            clEnumValN(HLSCore::SynthesisTarget::GENERIC, "generic", "Generic Synthesis Target (Compatible with Vivado and Verilator)"),
+            clEnumValN(HLSCore::SynthesisTarget::QUARTUS, "quartus", "Quartus")
+        ),
+        cl::value_desc("Default: generic"),
+        cl::init(HLSCore::SynthesisTarget::GENERIC)
+);
 
 
 
@@ -167,8 +195,13 @@ int main(int argc, char **argv) {
     cl::ParseCommandLineOptions(argc, argv, "HLSCore");
     logging::runtime_logging_flag = runtime_logging_flag;
 
-    // initialise Options
     std::unique_ptr<Options> opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename);
+    if (externalIPDeclaraction.size() > 0) {
+        std::vector<std::vector<std::string>> ip_list = {externalIPDeclaraction};
+        opt = std::make_unique<HLSCore::OptionsFile>(inputFilename, outputFilename, ip_list);
+    }
+
+    // initialise Options
 
     // set objects (based off of the CLI arguments)
     opt->irInputLevel = inputLevelOpt;
@@ -182,6 +215,10 @@ int main(int argc, char **argv) {
 
     opt->bufferSize = bufferSizeOpt;
     opt->bufferingStrategy = bufferingStrategyOpt;
+
+    opt->optimiseInput = inputOptimiseInput;
+
+    opt->synthTarget = synthTargetOpt;
     
     if (split_verilog_flag && opt->irOutputLevel != SV)
         throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");

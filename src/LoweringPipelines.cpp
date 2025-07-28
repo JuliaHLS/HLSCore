@@ -1,4 +1,5 @@
 #include "LoweringPipelines.hpp"
+#include "logging.hpp"
 
 namespace {
 
@@ -24,15 +25,18 @@ void registerCoreDialects(mlir::DialectRegistry& registry) {
 }
 
 void registerPreCompileDialects(mlir::DialectRegistry& registry) {
+  HLSCore::logging::runtime_log("Registering precompile dialects");
   registry.insert<mlir::affine::AffineDialect>();
   registry.insert<mlir::scf::SCFDialect>();
   registry.insert<mlir::tosa::TosaDialect>();
   registry.insert<mlir::tensor::TensorDialect>();
   registry.insert<mlir::linalg::LinalgDialect>();
+  registry.insert<mlir::ub::UBDialect>();
   registry.insert<mlir::bufferization::BufferizationDialect>();
 
   // register bufferization interfaces
   mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::scf::registerBufferizableOpInterfaceExternalModels(registry);
   mlir::linalg::registerAllDialectInterfaceImplementations(registry);
 
   mlir::bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(registry);
@@ -45,20 +49,16 @@ void registerPreCompileDialects(mlir::DialectRegistry& registry) {
 // lower TOSA To Affine
 void TosaToAffinePipeline(mlir::PassManager &pm) {
     // lower tosa to Linalg
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalgNamed());
     pm.addNestedPass<mlir::func::FuncOp>(mlir::tosa::createTosaToLinalg());
 
     // generate buffers
     pm.addPass(mlir::bufferization::createOneShotBufferizePass(generateBufferConfig()));
     pm.addPass(mlir::bufferization::createDropEquivalentBufferResultsPass());
 
-    // legalise return types
-    pm.addNestedPass<mlir::func::FuncOp>(
-        HLSPasses::createOutputMemrefPassByRef());
 
     // lower linalg to affine in a CIRCT friendly manner
     pm.addPass(HLSCore::passes::createLowerLinalgToAffineCirctFriendly());
-
-
 }
 
 }
