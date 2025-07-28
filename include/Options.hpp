@@ -55,6 +55,11 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> port_names;
 };
 
+enum SynthesisTarget {
+    GENERIC,
+    QUARTUS
+};
+
 class Options {
 public:
     // extract buffer ref (regardless of input type
@@ -80,6 +85,7 @@ public:
         verifyDiagnostics = false;
 
         optimiseInput = true;
+        synthTarget = SynthesisTarget::GENERIC;
 
         custom_ip = CustomIP();
     }
@@ -94,6 +100,8 @@ public:
     IRLevel irInputLevel;
     IRLevel irOutputLevel;
     bool splitInputFile; 
+
+    SynthesisTarget synthTarget;
 
     OutputFormatKind outputFormat;
     bool traceIVerilog;

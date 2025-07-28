@@ -31,10 +31,12 @@ void registerPreCompileDialects(mlir::DialectRegistry& registry) {
   registry.insert<mlir::tosa::TosaDialect>();
   registry.insert<mlir::tensor::TensorDialect>();
   registry.insert<mlir::linalg::LinalgDialect>();
+  registry.insert<mlir::ub::UBDialect>();
   registry.insert<mlir::bufferization::BufferizationDialect>();
 
   // register bufferization interfaces
   mlir::tensor::registerBufferizableOpInterfaceExternalModels(registry);
+  mlir::scf::registerBufferizableOpInterfaceExternalModels(registry);
   mlir::linalg::registerAllDialectInterfaceImplementations(registry);
 
   mlir::bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(registry);

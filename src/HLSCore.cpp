@@ -143,6 +143,17 @@ static llvm::cl::list<std::string> externalIPDeclaraction(
         cl::value_desc("Default: empty")
 );
 
+static cl::opt<HLSCore::SynthesisTarget> synthTargetOpt(
+        "synth_target",
+        cl::desc("Synthesis Target"),
+        cl::values(
+            clEnumValN(HLSCore::SynthesisTarget::GENERIC, "generic", "Generic Synthesis Target (Compatible with Vivado and Verilator)"),
+            clEnumValN(HLSCore::SynthesisTarget::QUARTUS, "quartus", "Quartus")
+        ),
+        cl::value_desc("Default: generic"),
+        cl::init(HLSCore::SynthesisTarget::GENERIC)
+);
+
 
 
 // driver program
@@ -206,6 +217,8 @@ int main(int argc, char **argv) {
     opt->bufferingStrategy = bufferingStrategyOpt;
 
     opt->optimiseInput = inputOptimiseInput;
+
+    opt->synthTarget = synthTargetOpt;
     
     if (split_verilog_flag && opt->irOutputLevel != SV)
         throw std::runtime_error("Error: Invalid flags, cannot have split_verilog_flag set while outType != SV");
